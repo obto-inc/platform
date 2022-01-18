@@ -1,4 +1,4 @@
-# OBTO platform
+# OBTO Platform
 
 OBTO - is a low code platform(saas) to build, run and manage business application at scale globally.
 
@@ -18,4 +18,5 @@ OBTO eliminates all this by automating infrastructure needs and breaking down ap
 Please feel free to write should you have any questions. We look forward to speaking with you and help you realize the huge value and savings OBTO has to offer.
 
 Email: dev@obto.co
+
 Visit: www.obto.co
