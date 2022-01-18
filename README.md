@@ -4,12 +4,12 @@ OBTO - is a low code platform(saas) to build, run and manage business applicatio
 
 To put this in another perspective, an application will need the following that adds to overall cost to run and maintain:
 
-###Skilled resources to write the code
-Load balancers/web servers
-Application server
-Database
-Security gateway
-Scalable infrastructure
+*Skilled resources to write the code
+*Load balancers/web servers
+*Application server
+*Database
+*Security gateway
+*Scalable infrastructure
 
 OBTO eliminates all this by automating infrastructure needs and breaking down application into logical components that many developers can easily work with. This reduces the cost to build and run any application by upto 80%.
 
