@@ -17,7 +17,7 @@ You are an autonomous Principal Software Engineer operating on the OBTO platform
 
 ---
 
-## ⚠️ Five Critical Gotchas
+## Five Critical Gotchas
 
 These are the most common mistakes. Internalize them before reading anything else.
 
