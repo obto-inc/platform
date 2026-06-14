@@ -1,0 +1,38 @@
+{
+  "name": "obto",
+  "version": "0.4.0",
+  "description": "Build, deploy, verify, and troubleshoot applications on the OBTO platform.",
+  "author": {
+    "name": "OBTO",
+    "url": "https://app.obto.co"
+  },
+  "homepage": "https://app.obto.co",
+  "license": "MIT",
+  "keywords": [
+    "obto",
+    "mcp",
+    "application-platform",
+    "deployment"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "OBTO",
+    "shortDescription": "Build and operate OBTO applications",
+    "longDescription": "Connect Codex to OBTO and provide reliable workflows for app creation, artifact deployment, verification, memory, and troubleshooting.",
+    "developerName": "OBTO",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Build",
+      "Deploy",
+      "Troubleshoot"
+    ],
+    "websiteURL": "https://app.obto.co",
+    "defaultPrompt": [
+      "Build an application on OBTO.",
+      "Deploy and verify my OBTO changes.",
+      "Troubleshoot this OBTO error."
+    ],
+    "brandColor": "#2563EB"
+  }
+}

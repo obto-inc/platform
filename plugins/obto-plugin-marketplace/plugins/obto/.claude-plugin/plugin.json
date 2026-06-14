@@ -1,0 +1,11 @@
+{
+  "name": "obto",
+  "version": "0.4.0",
+  "description": "Build, deploy, and operate apps on the OBTO platform — bundles the OBTO MCP server connection plus skills for the build loop, large-file deploys (patch-in-place, chunked, and deploy-by-reference), agent memory, and troubleshooting.",
+  "author": {
+    "name": "OBTO"
+  },
+  "homepage": "https://app.obto.co",
+  "keywords": ["obto", "mcp", "low-code", "platform", "apps"],
+  "license": "MIT"
+}
