@@ -2,10 +2,7 @@
   "mcpServers": {
     "obto": {
       "type": "http",
-      "url": "https://app.obto.co/ms/mcp",
-      "headers": {
-        "Authorization": "Bearer ${OBTO_TOKEN}"
-      }
+      "url": "https://app.obto.co/ms/mcp"
     }
   }
 }

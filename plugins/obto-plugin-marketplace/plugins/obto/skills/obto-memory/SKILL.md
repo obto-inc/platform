@@ -6,7 +6,7 @@ description: >
   mentions OBTO memory/Hindsight, or when an agent needs durable context on
   the OBTO platform. Covers obto_remember / obto_recall scoping modes and
   the discipline for using them effectively.
-version: 0.4.0
+version: 0.5.0
 ---
 
 # OBTO Memory Discipline (obto_remember / obto_recall)

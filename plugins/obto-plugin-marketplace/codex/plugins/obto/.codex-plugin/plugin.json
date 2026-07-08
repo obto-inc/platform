@@ -1,7 +1,7 @@
 {
   "name": "obto",
-  "version": "0.4.0",
-  "description": "Build, deploy, verify, and troubleshoot applications on the OBTO platform.",
+  "version": "0.8.0",
+  "description": "Build, deploy, verify, upload media, extend the MCP surface, and troubleshoot applications on the OBTO platform.",
   "author": {
     "name": "OBTO",
     "url": "https://app.obto.co"

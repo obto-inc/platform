@@ -6,7 +6,7 @@ description: >
   must pass appName/domain, host_mismatch, scope_ownership_mismatch, stale
   tools, or wants to debug an OBTO app via logs. Covers the structured error
   envelope and the standard diagnosis paths.
-version: 0.4.0
+version: 0.6.0
 ---
 
 # OBTO Troubleshooting
@@ -19,7 +19,7 @@ OBTO tools return structured errors: `{ok:false, error:<code>, hint:<what to do>
 
 **`-32602` missing `appName`/`domain`** — the stateless contract: every call carries both explicitly. Get `domain` from `obto_whoami`; ask the user which app.
 
-**`collection_not_in_allowlist`** — `obto_db_query` only reads platform collections (`pltf_log`, `pltf_appmap`) plus collections the app opted into via `exposedCollections` on its **`application` record**. Fixes, in order: pick a collection from `obto_db_list_collections`; read business data through the app's own API routes via `obto_invoke_route` (often the more correct pattern); ask an admin to add the opt-in; super-users (dev domain) may pass `allowUnexposed: true` for an explicit, logged, domain-pinned bypass.
+**`collection_not_in_allowlist`** — `obto_db_query` only reads platform collections (`pltf_log`, `pltf_appmap`) plus collections the app opted into via `exposedCollections` on its **`application` record**. Fixes, in order: pick a collection from `obto_db_list_collections`; read business data through the app's own API routes via `obto_invoke_route` (often the more correct pattern); have the app owner add the opt-in with `obto_db_set_exposed_collections` (3.5.17+). Super-users (dev domain) bypass the allowlist automatically on 3.5.17+ (logged); on older servers they pass `allowUnexposed: true` explicitly.
 
 **Query returns 0 rows you know exist** — the injected tenancy filter doesn't match how documents are scoped (e.g. docs lack an `app` or `domain` field). Run `obto_db_describe_collection` and check the collection's `tenancyFields`.
 
@@ -37,6 +37,18 @@ OBTO tools return structured errors: `{ok:false, error:<code>, hint:<what to do>
 
 **`forbidden_operator`** — `$where`, `$function`, `$accumulator`, `$lookup`, `$graphLookup`, `$out`, `$merge` are blocked in queries by design. Rewrite with plain find filters.
 
+**`tool_timeout`** — the call hit the server's 30-second wall-clock ceiling. This structured refusal is by design (it pre-empts the opaque client-side `-32001`). Retry once; if it recurs, shrink the operation — smaller chunks, narrower query, fewer records — rather than repeating the same call.
+
+**`payment_required`** — a billed tool hit a plan limit. The envelope echoes both `requestedDomain` and `billingDomain` (billing rolls up to the operator domain), so read both before concluding which tenant's plan fired; the operator/`dev` tenant is exempt.
+
+**Permission refusal writing `pltf_data_source`** — data-source upserts (3.5.21+) pass through an admin-only pre-write policy. "You don't have permission" means the signed-in identity lacks the admin role — it is not a tool bug; the fix is identity, not retries. Also: the `script` must be `JSON.stringify({collection, pipeline[, label]})`, which the server unpacks into structured fields.
+
+**Top-level `return X;` rejected in `pltf_script_client` / `pltf_policy_client`** — the server predates 3.5.19; the return-wrapped form is the contract and newer gates accept it. Check `obto_whoami.serverVersion`.
+
+**`obto_validate_script` by-reference fails at line 1 on a server module** — known false-fire: by-reference validation parses `pltf_script_server` as a script, so ESM syntax in the module trips it. Treat that single signature as benign; any other syntax error is real.
+
+**`dynamic_tool_failed` / a domain tool missing from the catalog** — per-tenant dynamic tools run vm-sandboxed inside a timeout + structured-envelope wrapper; a failure returns this envelope rather than crashing the session. A tool that never appears usually failed to compile at session init — the classic cause is an empty or stub `handlerFunction` on the `mcp_tools` record. Fix or delete the record (or set it inactive); don't leave dead tools error-logging every session.
+
 ## Deploy / upload failures (obto_stage_chunk → obto_upsert_record)
 
 **`sha256_mismatch` that won't go away on a multi-byte source** — you're emitting utf8 chunks for a source dense with non-ASCII characters, which an agent can't reproduce byte-exact. Don't keep retrying: begin again with `transferEncoding:'base64'` and emit `base64 <file>` output, or — if the source is large — use `action:'from_url'`. The gate is correct; the emission is the problem.
@@ -53,6 +65,11 @@ OBTO tools return structured errors: `{ok:false, error:<code>, hint:<what to do>
 2. `obto_get_app_logs` for a scan across all artifact categories.
 3. `obto_fetch_app_graph` / `pltf_appmap` for dependency structure.
 4. Reproduce via `obto_invoke_route` success-path calls.
+5. `obto_capture_preview` (where the operator has provisioned headless Chromium via `co.obto.preview.chromium_path`) — drives a server-side browser to a preview/app URL and returns a stored screenshot URL plus the HTTP `status`, browser `console` entries, uncaught `pageErrors`, and `failedRequests`. This is how you catch *client-side* and network failures that `pltf_log` (server-side only) never shows, and how you SEE a broken render. Attach the `screenshotUrl` to a vision-capable model to inspect the UI. SSRF-restricted to authorized preview origins; read-only.
+
+## A preview URL that "loads" is not proof
+
+If a page renders but the data is wrong/empty, or someone says "the preview works" — don't trust the URL. A preview only proves the infra responded. Verify for real: `obto_validate_app` clean, every `/api` route exercised via `obto_invoke_route` returning the expected status + JSON shape (an HTML 200, a non-200, or a 524/timeout on an `/api/...` path is a failure, and a degraded-mode UI fallback is too), and `obto_capture_preview` to inspect the actual render plus its console/network. See `obto://guide/public-app-baseline`.
 
 ## When the server seems wrong
 

@@ -5,13 +5,13 @@
   },
   "metadata": {
     "description": "Official Claude plugins for the OBTO platform",
-    "version": "0.4.0"
+    "version": "0.8.0"
   },
   "plugins": [
     {
       "name": "obto",
       "source": "./plugins/obto",
-      "description": "Build, deploy, and operate apps on the OBTO platform — MCP server connection plus build, deploy, memory, and troubleshooting skills."
+      "description": "Build, deploy, and operate apps on the OBTO platform — MCP server connection plus build, deploy, media-upload, memory, MCP-extension, and troubleshooting skills."
     }
   ]
 }

@@ -1,7 +1,7 @@
 {
   "name": "obto",
-  "version": "0.4.0",
-  "description": "Build, deploy, and operate apps on the OBTO platform — bundles the OBTO MCP server connection plus skills for the build loop, large-file deploys (patch-in-place, chunked, and deploy-by-reference), agent memory, and troubleshooting.",
+  "version": "0.8.0",
+  "description": "Build, deploy, and operate apps on the OBTO platform — bundles the OBTO MCP server connection plus skills for the build loop, large-file deploys (patch-in-place, chunked, and deploy-by-reference), media/binary upload (signed-URL and chunked), agent memory, per-tenant MCP extension (custom tools, resources, prompts), and troubleshooting.",
   "author": {
     "name": "OBTO"
   },

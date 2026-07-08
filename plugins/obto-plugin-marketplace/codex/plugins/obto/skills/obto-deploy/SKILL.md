@@ -7,7 +7,7 @@ description: >
   for one tool call. Covers deployment order, choosing the write path
   (patch vs. upsert vs. chunked vs. deploy-by-reference), the chunked-upload
   and from_url paths with sha256 verification, and post-deploy verification.
-version: 0.4.0
+version: 0.6.0
 ---
 
 # OBTO Deploys and Large Files
@@ -16,7 +16,7 @@ version: 0.4.0
 
 Before deploying, decide which path fits — picking wrong is the most common deploy failure. The deciding question is whether the bytes already live in OBTO (an *edit*) or are entering fresh (a *new* artifact):
 
-1. **Editing or deleting part of an existing artifact → `obto_patch_artifact`.** Line-addressed, surgical, and it NEVER reproduces the whole file. This sidesteps byte-exactness entirely, so it is the right tool for almost all changes to existing code — including large files (a 305KB platform module change is still just a few changed lines). `fetch(id)` to get line numbers, then patch with an `anchorText` guard. A deletion is just `newContent: ""`. The chunked / base64 / from_url paths below are ONLY for bytes entering the platform fresh — never reach for them to make an edit.
+1. **Editing or deleting part of an existing artifact → `obto_patch_artifact`.** Line-addressed, surgical, and it NEVER reproduces the whole file. This sidesteps byte-exactness entirely, so it is the right tool for almost all changes to existing code — including large files (a 305KB platform module change is still just a few changed lines). On a large file, use `obto_grep_artifact` to find the exact lines without pulling the whole file (it returns `N| text` blocks); for a small file `fetch(id)` is fine. Then patch with an `anchorText` guard. A deletion is just `newContent: ""`. The chunked / base64 / from_url paths below are ONLY for bytes entering the platform fresh — never reach for them to make an edit.
 2. **A new artifact small enough for one call → `obto_upsert_record({script})`** directly.
 3. **A new artifact too large for one call, that you can reproduce as text → the chunked path** (below). Reliable up to ~9KB per emitted chunk — see the emission ceiling.
 4. **A new artifact too large to reproduce as chunks at all (≈300KB+), or already reachable at an https URL → `obto_stage_chunk({action:'from_url'})`** (deploy-by-reference, below). The server fetches the bytes; the agent never emits them.
@@ -27,7 +27,7 @@ Reproducing a whole large file just to change a few lines is the trap. If the ch
 
 1. Backend first (`pltf_script_server`), then routes, then browser-facing artifacts (pages, JS, CSS).
 2. Every write carries explicit `appName` + `domain` (stateless contract).
-3. Verify after write: fetch the artifact back and compare before moving on.
+3. Verify after write: fetch the artifact back and compare before moving on. For code-bearing artifacts, also run `obto_validate_script` **by reference** (omit `script`, name the stored artifact) so the validation covers what actually landed. (Known benign false-fire: an ESM-bearing `pltf_script_server` module fails by-reference at line 1.)
 4. Exercise one success-path call per new/changed route or tool before calling the deploy done.
 
 ## Large artifacts — the chunked path
@@ -66,6 +66,9 @@ If a deploy adds, removes, or reshapes MCP tools, connected clients may hold a s
 
 ## Failure modes
 
+- `tool_timeout` → the call hit the server's 30-second wall-clock ceiling (a structured refusal, by design — it exists so you never see an opaque client-side `-32001`). Retry once; if it recurs, shrink the operation (smaller chunks, narrower query, fewer records) instead of hammering the same call.
+- Oversized inline payload rejected → single-call `script` payloads are size-capped (~5MB); anything near that belongs on the chunked path anyway.
+- Top-level `return X;` rejected in `pltf_script_client` / `pltf_policy_client` → the server predates 3.5.19 (which fixed the gate to accept the contract-required return-wrapped form). Check `obto_whoami.serverVersion` before fighting the validator.
 - `sha256_mismatch` on commit → the assembled buffer differs from your source; re-stage from scratch.
 - `host_mismatch` → you passed a host contradicting the app's canonical host; omit `host` and retry.
 - `name_collision` → you passed an `_id` but a DIFFERENT record already exists at that (name, app, domain). The `existingId` in the error is the loader-canonical record — commit without `_id` (updates the canonical one) rather than forcing yours. Duplicate records for one artifact mean the platform may be serving stale code; flag them to a human for cleanup.

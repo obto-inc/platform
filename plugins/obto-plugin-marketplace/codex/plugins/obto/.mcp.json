@@ -1,8 +1,7 @@
 {
   "mcpServers": {
     "obto": {
-      "url": "https://app.obto.co/ms/mcp",
-      "bearer_token_env_var": "OBTO_TOKEN"
+      "url": "https://app.obto.co/ms/mcp"
     }
   }
 }
