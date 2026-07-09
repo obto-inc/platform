@@ -43,6 +43,8 @@ OBTO tools return structured errors: `{ok:false, error:<code>, hint:<what to do>
 
 **Permission refusal writing `pltf_data_source`** — data-source upserts (3.5.21+) pass through an admin-only pre-write policy. "You don't have permission" means the signed-in identity lacks the admin role — it is not a tool bug; the fix is identity, not retries. Also: the `script` must be `JSON.stringify({collection, pipeline[, label]})`, which the server unpacks into structured fields.
 
+**Patching a data source fails with "must remain valid JSON"** — `fetch`/`obto_grep_artifact` display data-source JSON pretty-printed, but `obto_patch_artifact` (3.5.22+) addresses the RAW stored script, often one compact line — the display line numbers don't map to the stored bytes. The server refuses any patch whose result isn't valid `{collection, pipeline[, label]}` JSON (that refusal is protecting the record). The reliable edit: replace raw line 1 with the complete new compact JSON in one patch — or just re-upsert.
+
 **Top-level `return X;` rejected in `pltf_script_client` / `pltf_policy_client`** — the server predates 3.5.19; the return-wrapped form is the contract and newer gates accept it. Check `obto_whoami.serverVersion`.
 
 **`obto_validate_script` by-reference fails at line 1 on a server module** — known false-fire: by-reference validation parses `pltf_script_server` as a script, so ESM syntax in the module trips it. Treat that single signature as benign; any other syntax error is real.
