@@ -1,5 +1,5 @@
 {
-  "name": "obto-marketplace",
+  "name": "obto",
   "interface": {
     "displayName": "OBTO"
   },
@@ -8,7 +8,7 @@
       "name": "obto",
       "source": {
         "source": "local",
-        "path": "./codex/plugins/obto"
+        "path": "./plugins/obto-codex"
       },
       "policy": {
         "installation": "AVAILABLE",

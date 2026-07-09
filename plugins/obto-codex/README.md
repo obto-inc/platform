@@ -17,7 +17,12 @@ Build, deploy, verify, and troubleshoot applications on the
 
 ## Setup
 
-1. Add the repository as a Codex marketplace.
+1. Clone `obto-inc/platform` and add it as a Codex marketplace (the repository root is the marketplace; this package lives at `plugins/obto-codex`):
+
+   ```bash
+   codex plugin marketplace add "/absolute/path/to/platform"
+   ```
+
 2. Install the **OBTO** plugin.
 3. Authorize the connection with OAuth: run `codex mcp login obto` and complete the browser sign-in. No token or environment variable is required.
 4. Restart Codex and begin a new thread.

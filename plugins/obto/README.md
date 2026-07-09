@@ -19,7 +19,13 @@ Build, deploy, and operate apps on the [OBTO platform](https://app.obto.co) from
 
 ## Setup
 
-1. Install the plugin.
+1. Add the marketplace and install (the `obto-inc/platform` repository is itself the marketplace):
+
+   ```
+   /plugin marketplace add obto-inc/platform
+   /plugin install obto@obto
+   ```
+
 2. Start a new conversation. The first time Claude connects to the OBTO MCP server, you'll be prompted to sign in and authorize access via OAuth in your browser — approve it once and the connection is remembered. No API token or environment variable is required.
 
    Authentication is handled by OAuth against your OBTO account; all tenancy and permission enforcement happens server-side against that identity — the plugin grants no access your account doesn't already have.
