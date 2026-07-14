@@ -1,0 +1,31 @@
+# OBTO Plugin for Codex
+
+Build, deploy, verify, and troubleshoot applications on the
+[OBTO platform](https://app.obto.co) from Codex.
+
+## Included
+
+- OBTO MCP server connection over OAuth (run `codex mcp login obto`; no token required)
+- Reliable public and native application build workflow
+- Ordered deployment with the right write path: patch-in-place for edits, chunked upload and `from_url` deploy-by-reference for large new artifacts
+- Line-level editing with grep-to-patch reads
+- Media/binary upload into the file store: signed-URL direct upload (`obto_request_upload_url`, primary), chunked integrity-gated staging (fallback), and server-side URL fetch — returning a served viewer URL
+- Done-means-done verification: validate, exercise every route, and visual-debug with `obto_capture_preview` (a preview URL is not proof)
+- Durable OBTO memory guidance
+- Per-tenant MCP extension: publish custom tools, resources, and prompts through the triad CRUD (`obto_create_mcp_tool` …)
+- Error-envelope, routing, database, host, timeout, and stale-catalog troubleshooting
+
+## Setup
+
+1. Clone `obto-inc/platform` and add it as a Codex marketplace (the repository root is the marketplace; this package lives at `plugins/obto-codex`):
+
+   ```bash
+   codex plugin marketplace add "/absolute/path/to/platform"
+   ```
+
+2. Install the **OBTO** plugin.
+3. Authorize the connection with OAuth: run `codex mcp login obto` and complete the browser sign-in. No token or environment variable is required.
+4. Restart Codex and begin a new thread.
+
+The agent calls `obto_whoami` first; the server is stateless (3.3.0+ contract), so
+every app-scoped call carries `appName` + `domain` explicitly.

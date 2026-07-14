@@ -33,15 +33,28 @@ Go to [obto.co](https://www.obto.co) and click **Sign in**. Authenticate with Go
 ### 2. Copy Your MCP Endpoint
 After signing in, you'll see your personal MCP server URL on the landing page. Copy it.
 
-### 3. Get the OBTO Skill
-Download [`SKILL.md`](./SKILL.md) from this repository. This file tells the AI how to use OBTO's deployment tools. Place it where your AI client can read it:
+### 3. Teach Your AI Client — plugin or skill file
 
-| Client | Where to put `SKILL.md` |
+**Install the plugin (recommended where supported).** This repository is itself the plugin marketplace — one URL, nothing else to configure:
+
+**Claude Code / Claude Cowork**
+```
+/plugin marketplace add obto-inc/platform
+/plugin install obto@obto
+```
+Installs the OBTO MCP server connection plus six task skills (build loop, deploys & large files, media upload, memory, MCP extension, troubleshooting). Details: [`plugins/obto`](./plugins/obto/).
+
+**OpenAI Codex** — clone this repository, then `codex plugin marketplace add "/path/to/platform"` and install **OBTO**. The Codex package is [`plugins/obto-codex`](./plugins/obto-codex/).
+
+**Use the skill files directly (every other harness).** The skills are plain-markdown `SKILL.md` folders — portable to any agent harness that reads skills or instruction files:
+
+| Client | What to use |
 |--------|------------------------|
-| **Claude Desktop** | Add to your project's knowledge or attach as a file |
-| **Cursor** | Place in your workspace root or `.cursor/skills/` |
-| **VS Code (Copilot)** | Place in your workspace root |
-| **AntiGravity** | Place in your workspace's `.agent/skills/` directory |
+| **Claude Desktop** | Add [`SKILL.md`](./SKILL.md) to your project's knowledge or attach as a file |
+| **Cursor** | Place [`SKILL.md`](./SKILL.md) in your workspace root or `.cursor/skills/` |
+| **VS Code (Copilot)** | Place [`SKILL.md`](./SKILL.md) in your workspace root |
+| **AntiGravity** | Place [`SKILL.md`](./SKILL.md) in your workspace's `.agent/skills/` directory |
+| **OpenCode & other agent harnesses** | Copy the [`plugins/obto/skills/`](./plugins/obto/skills/) folders into your harness's skills directory, or use the single-file [`SKILL.md`](./SKILL.md) |
 
 ### 4. Connect to Your AI Client
 Add your MCP server URL to your AI client's MCP configuration:
@@ -76,18 +89,22 @@ The [`SKILL.md`](./SKILL.md) file is a set of instructions that teaches AI model
 
 Without this skill file, the AI won't know OBTO's conventions and will produce code that doesn't deploy correctly. With it, the AI becomes an autonomous developer on your OBTO instance.
 
+Where your client supports plugins (Claude Code, Claude Cowork, Codex), prefer the plugin — the same doctrine split into six auto-loading task skills, with the MCP connection preconfigured.
+
 ---
 
 ## Supported AI Clients
 
 | Client | MCP Support | Status |
 |--------|------------|--------|
+| Claude Code / Claude Cowork | ✅ Native plugin | Fully supported (plugin + skills) |
 | Claude Web | ✅ Native | Fully supported |
 | Claude Desktop | ✅ Native | Fully supported |
 | Cursor | ✅ Native | Fully supported |
 | VS Code (GitHub Copilot) | ✅ Native | Supported |
 | AntiGravity | ✅ Native | Fully supported |
-| OpenAI Codex | ✅ Via MCP | Supported |
+| OpenAI Codex | ✅ Plugin via MCP | Supported |
+| OpenCode & other skill-compatible harnesses | ✅ Via MCP + skill files | Supported |
 
 ---
 
