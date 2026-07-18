@@ -1,7 +1,7 @@
 {
   "name": "obto",
-  "version": "0.9.0",
-  "description": "Build, deploy, verify, upload media, extend the MCP surface, edit SOFOS report cards, and troubleshoot applications on the OBTO platform — connects both OBTO clusters (app + SOFOS education).",
+  "version": "0.10.0",
+  "description": "Build, deploy, verify, upload media, extend the MCP surface, and troubleshoot applications on the OBTO platform.",
   "author": {
     "name": "OBTO",
     "url": "https://app.obto.co"
@@ -12,15 +12,14 @@
     "obto",
     "mcp",
     "application-platform",
-    "deployment",
-    "sofos"
+    "deployment"
   ],
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "OBTO",
     "shortDescription": "Build and operate OBTO applications",
-    "longDescription": "Connect Codex to OBTO — both the app cluster and the SOFOS education cluster — and provide reliable workflows for app creation, artifact deployment, verification, memory, report-card editing, and troubleshooting.",
+    "longDescription": "Connect Codex to the OBTO platform and provide reliable workflows for app creation, artifact deployment, verification, memory, and troubleshooting.",
     "developerName": "OBTO",
     "category": "Developer Tools",
     "capabilities": [

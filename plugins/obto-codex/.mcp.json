@@ -2,9 +2,6 @@
   "mcpServers": {
     "obto": {
       "url": "https://app.obto.co/ms/mcp"
-    },
-    "obto-sofos": {
-      "url": "https://ogpss.obto.co/ms/mcp"
     }
   }
 }

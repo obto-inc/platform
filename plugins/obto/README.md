@@ -4,16 +4,9 @@ Build, deploy, and operate apps on the [OBTO platform](https://app.obto.co) from
 
 ## What's included
 
-**MCP server connections (two clusters)** — connects Claude to BOTH OBTO clusters, each with the full tool surface (app scaffolding, artifact deploys, line-level patching + slice reads, routes, DB introspection, logs, memory, search/fetch, media uploads, visual-debug screenshots, per-tenant MCP tool/resource/prompt publishing, and payment links):
+**MCP server connection** — connects Claude to the OBTO platform (`obto` → `https://app.obto.co/ms/mcp`) with the full tool surface: app scaffolding, artifact deploys, line-level patching + slice reads, routes, DB introspection, logs, memory, search/fetch, media uploads, visual-debug screenshots, per-tenant MCP tool/resource/prompt publishing, and payment links. Sign-in is Google OAuth; a first-time sign-in provisions your workspace automatically.
 
-| Server | URL | Use for |
-|---|---|---|
-| `obto` | `https://app.obto.co/ms/mcp` | The default/platform cluster — general app building and dev-domain operations |
-| `obto-sofos` | `https://ogpss.obto.co/ms/mcp` | The SOFOS education cluster — schools: report cards, fees, attendance, marks |
-
-The clusters hold **separate data** — a record with the same name on the other cluster is a different record. Never mix them mid-task.
-
-**`/obto:start` command** — begins a session by picking the cluster (`/obto:start sofos report cards`), running `obto_whoami` there, stating the working context, and loading the matching skill.
+**`/obto:start` command** — begins a session by running `obto_whoami`, resolving the working domain, stating the working context, and loading the matching skill.
 
 **Skills**
 
@@ -25,7 +18,6 @@ The clusters hold **separate data** — a record with the same name on the other
 | `obto-memory` | Using `obto_remember`/`obto_recall` (Hindsight) effectively — scoping modes, keys, recall-before-work |
 | `obto-mcp-extend` | Publishing per-tenant MCP tools, resources, and prompts through the triad CRUD (`obto_create_mcp_tool` …) — handler and schema rules, required annotations, Zod v4 traps, and catalog-freshness discipline |
 | `obto-troubleshooting` | Structured error envelopes, the common error codes, log-based and visual (`obto_capture_preview`) debugging, and why a preview URL isn't proof |
-| `obto-reportcard` | Safe report-card work on the SOFOS cluster: the grade pipeline (`reportcard_reducer` order + callback discipline), dual-rendered React components (SSR/PDF safety), session addressing (`(app, domain, name, session)` keys), edu-base vs school-override inheritance, and the `session_required`/`order_required` write guardrails |
 
 ## Setup
 
@@ -36,7 +28,7 @@ The clusters hold **separate data** — a record with the same name on the other
    /plugin install obto@obto
    ```
 
-2. Start a new conversation. The first time Claude connects to each OBTO MCP server, you'll be prompted to sign in and authorize access via OAuth in your browser — approve once per server (the two clusters authorize separately) and the connections are remembered. No API token or environment variable is required.
+2. Start a new conversation. The first time Claude connects to the OBTO MCP server, you'll be prompted to sign in via Google OAuth in your browser — approve once and the connection is remembered (a first-time sign-in provisions your workspace automatically). No API token or environment variable is required.
 
    Authentication is handled by OAuth against your OBTO account; all tenancy and permission enforcement happens server-side against that identity — the plugin grants no access your account doesn't already have.
 
