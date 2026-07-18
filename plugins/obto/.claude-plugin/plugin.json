@@ -1,11 +1,11 @@
 {
   "name": "obto",
-  "version": "0.9.1",
-  "description": "Build, deploy, and operate apps on the OBTO platform — bundles connections to BOTH OBTO clusters (app.obto.co and the SOFOS education cluster), a /obto:start cluster-picker command, plus skills for the build loop, large-file deploys (patch-in-place, chunked, and deploy-by-reference), media/binary upload (signed-URL and chunked), agent memory, per-tenant MCP extension (custom tools, resources, prompts), report-card editing (SOFOS grade pipeline + SSR components), and troubleshooting.",
+  "version": "0.10.0",
+  "description": "Build, deploy, and operate apps on the OBTO platform — one MCP connection (Google sign-in, auto-provisioned workspace), a /obto:start session command, plus skills for the build loop, large-file deploys (patch-in-place, chunked, and deploy-by-reference), media/binary upload (signed-URL and chunked), agent memory, per-tenant MCP extension (custom tools, resources, prompts), and troubleshooting.",
   "author": {
     "name": "OBTO"
   },
   "homepage": "https://app.obto.co",
-  "keywords": ["obto", "mcp", "low-code", "platform", "apps", "sofos", "report-cards"],
+  "keywords": ["obto", "mcp", "low-code", "platform", "apps"],
   "license": "MIT"
 }

@@ -3,10 +3,6 @@
     "obto": {
       "type": "http",
       "url": "https://app.obto.co/ms/mcp"
-    },
-    "obto-sofos": {
-      "type": "http",
-      "url": "https://ogpss.obto.co/ms/mcp"
     }
   }
 }
