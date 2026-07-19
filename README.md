@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="[https://www.obto.co/resource/img/v2/logo/white-256.png](https://imagedelivery.net/QjC6mNbtigBMadjlj3Sh_w/f2b5d615-b31e-4f3c-fbea-bc0ab8569400/mobilecard)" alt="OBTO" width="80" />
+  <img src="https://imagedelivery.net/QjC6mNbtigBMadjlj3Sh_w/f2b5d615-b31e-4f3c-fbea-bc0ab8569400/mobilecard" alt="OBTO" width="80" />
 </p>
 
 <h1 align="center">OBTO — The Glass Box AI Platform</h1>
