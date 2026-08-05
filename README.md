@@ -21,7 +21,7 @@ OBTO is a full-stack deployment platform built for the age of AI agents. Connect
 
 No code editor. No terminal. No hosting setup. Full-stack. Not a wrapper over Vercel and Supabase — real backend, real infrastructure, one platform.
 
-OBTO has been running in production since 2019.
+OBTO Inc. was founded in 2015. The platform has been running production workloads since 2019 — today it serves 300M+ monthly requests across 150+ institutions.
 
 ---
 
