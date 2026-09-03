@@ -35,7 +35,7 @@ Build, deploy, verify, and troubleshoot applications on the
 
 3. Restart Codex and begin a new thread.
 
-To pick up a later release, run `codex plugin marketplace update` — a marketplace clone never refreshes itself.
+To pick up a later release, run `codex plugin marketplace upgrade` — a marketplace snapshot never refreshes itself. The installed plugin tracks the snapshot, so no separate plugin-update step is needed.
 
 The agent calls `obto_whoami` first; the server is stateless (3.3.0+ contract), so
 every app-scoped call carries `appName` + `domain` explicitly.
