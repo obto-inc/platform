@@ -6,7 +6,7 @@ description: >
   must pass appName/domain, host_mismatch, scope_ownership_mismatch, stale
   tools, or wants to debug an OBTO app via logs. Covers the structured error
   envelope and the standard diagnosis paths.
-version: 0.7.0
+version: 0.8.0
 ---
 
 # OBTO Troubleshooting
@@ -75,10 +75,30 @@ OBTO tools return structured errors: `{ok:false, error:<code>, hint:<what to do>
 4. Reproduce via `obto_invoke_route` success-path calls.
 5. `obto_capture_preview` (where the operator has provisioned headless Chromium via `co.obto.preview.chromium_path`) — drives a server-side browser to a preview/app URL and returns a stored screenshot URL plus the HTTP `status`, browser `console` entries, uncaught `pageErrors`, and `failedRequests`. This is how you catch *client-side* and network failures that `pltf_log` (server-side only) never shows, and how you SEE a broken render. Attach the `screenshotUrl` to a vision-capable model to inspect the UI. SSRF-restricted to authorized preview origins; read-only.
 
+## The canonical host serves the wrong thing (shells, wrong app, HTML on an API)
+
+A 200 that carries `<title>Site Missing!</title>`, "This domain was not found!!", or "This web address was not found!!" is a **platform shell**, not your app — and it is served with status 200, so anything checking status alone will call it healthy.
+
+- `obto_invoke_route` classifies these automatically: it retries via tenant ingress and returns `canonicalAttempt` (what the canonical host actually served), `canonicalHostBroken`, and a `layerVerdict` separating platform host routing from route registration from app code. Read `connectVia` — `canonical` means the real host answered; a `tenant_ingress_semantic_fallback` means it did not.
+- `obto_repair_publish({appName, domain, mode:'dry_run'})` walks the entire serving chain (host binding → site row/flags → DNS → root-document identity → bundle asset → API JSON on both surfaces) and returns `{check, before, action}` evidence; `mode:'repair'` applies the safe data-layer fixes idempotently and reports before/after. Run it before theorizing.
+- If root serves your app but a bundle asset 404s, the built dist did not materialise — rebuild with `obto_build_app` (check the asset's STATUS, never body length).
+- A caveat like `canonical_api_platform_routing_gap` on a publish means the platform, not your app, is degraded: the app is fine, the caveat names what a browser cannot yet reach. Relay it; there is no app-side fix.
+
+## Code saved but the app still runs the old version
+
+Read the write receipt's `codePropagation` — it is a fact about the artifact type, not a guess:
+`read_per_request` (live now) · `syncs_live` (propagating; a probe may briefly hit an older copy) · `pending_platform_activation` (stored, activating asynchronously) · `requires_site_rebuild` (site-served host — the built bundle is what browsers get, so `obto_build_app` is the only propagation).
+
+For `pending_platform_activation`: try `obto_reload_scripts`; otherwise **verify instead of intervening** — call something only the new version can answer (a new method → old module throws `x is not a function`; a new response field) via `obto_invoke_route`. Propagation is eventual and often completes on its own. Two traps: a job that reports `done` may have run the OLD code, and one runtime can serve new code while another serves old for many minutes — sample repeatedly before trusting a post-write smoke. If activation never happens, that is a platform incident to report by error code — never something you resolve with infrastructure access (see `obto-platform-boundary`).
+
 ## A preview URL that "loads" is not proof
 
-If a page renders but the data is wrong/empty, or someone says "the preview works" — don't trust the URL. A preview only proves the infra responded. Verify for real: `obto_validate_app` clean, every `/api` route exercised via `obto_invoke_route` returning the expected status + JSON shape (an HTML 200, a non-200, or a 524/timeout on an `/api/...` path is a failure, and a degraded-mode UI fallback is too), and `obto_capture_preview` to inspect the actual render plus its console/network. See `obto://guide/public-app-baseline`.
+If a page renders but the data is wrong/empty, or someone says "the preview works" — don't trust the URL. A preview only proves the infra responded, and a working preview or tenant-ingress call does NOT prove the canonical host works (a structurally-dead canonical API once survived every green test that way). Verify for real: `obto_validate_app` clean; every `/api` route exercised via `obto_invoke_route` returning the expected status, content type and JSON shape on the CANONICAL surface (an HTML 200, a non-200, or a 524/timeout is a failure, and a degraded-mode UI fallback is too); identity confirmed (is *my* app answering, not a shell or another app's build?); and `obto_capture_preview` to inspect the actual render plus its console/network. Best proof: one real user action performed and confirmed persisted. See `obto://guide/public-app-baseline`.
 
 ## When the server seems wrong
 
-Confirm what's actually running before concluding anything: `obto_whoami` → `serverVersion` tells you whether a deploy reached the pod. Mismatched expectations are usually a stale client catalog, not a server regression.
+Confirm what's actually running before concluding anything: `obto_whoami` → `serverVersion` tells you which server build your session is talking to. Mismatched expectations are usually a stale client catalog (reconnect), not a server regression.
+
+## Never diagnose past the platform boundary
+
+If a diagnosis ends at "restart it", "recycle the pods", "check the cluster", "kubectl", "ssh in", or "fix the DNS record" — stop. That is outside the tenant surface and outside your remit even if you have the access. Report the structured error code and what you observed; the `obto-platform-boundary` skill has the symptom-to-MCP-action map and the defect-report shape.

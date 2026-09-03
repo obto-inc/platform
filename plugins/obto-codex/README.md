@@ -14,18 +14,28 @@ Build, deploy, verify, and troubleshoot applications on the
 - Durable OBTO memory guidance
 - Per-tenant MCP extension: publish custom tools, resources, and prompts through the triad CRUD (`obto_create_mcp_tool` …)
 - Error-envelope, routing, database, host, timeout, and stale-catalog troubleshooting
+- The platform boundary: every workflow stays inside MCP — never `kubectl`, pod recycles, shells, or a DNS console
 
 ## Setup
 
-1. Clone `obto-inc/platform` and add it as a Codex marketplace (the repository root is the marketplace; this package lives at `plugins/obto-codex`):
+1. Add the marketplace and install the plugin (the `obto-inc/platform` repository root **is** the marketplace; this package lives at `plugins/obto-codex`):
 
    ```bash
-   codex plugin marketplace add "/absolute/path/to/platform"
+   codex plugin marketplace add obto-inc/platform
+   codex plugin add obto@obto
    ```
 
-2. Install the **OBTO** plugin.
-3. Authorize the connection with OAuth: run `codex mcp login obto` and complete the browser sign-in. No token or environment variable is required.
-4. Restart Codex and begin a new thread.
+2. Authorize the connection with OAuth and complete the browser sign-in:
+
+   ```bash
+   codex mcp login obto
+   ```
+
+   No token or environment variable is required, and a first-time sign-in provisions your workspace automatically.
+
+3. Restart Codex and begin a new thread.
+
+To pick up a later release, run `codex plugin marketplace update` — a marketplace clone never refreshes itself.
 
 The agent calls `obto_whoami` first; the server is stateless (3.3.0+ contract), so
 every app-scoped call carries `appName` + `domain` explicitly.

@@ -42,9 +42,15 @@ After signing in, you'll see your personal MCP server URL on the landing page. C
 /plugin marketplace add obto-inc/platform
 /plugin install obto@obto
 ```
-Installs the OBTO MCP server connection plus six task skills (build loop, deploys & large files, media upload, memory, MCP extension, troubleshooting). Details: [`plugins/obto`](./plugins/obto/).
+Installs the OBTO MCP server connection plus seven task skills (build loop, deploys & large files, media upload, memory, MCP extension, troubleshooting, platform boundary). Details: [`plugins/obto`](./plugins/obto/).
 
-**OpenAI Codex** — clone this repository, then `codex plugin marketplace add "/path/to/platform"` and install **OBTO**. The Codex package is [`plugins/obto-codex`](./plugins/obto-codex/).
+**OpenAI Codex**
+```bash
+codex plugin marketplace add obto-inc/platform
+codex plugin add obto@obto
+codex mcp login obto
+```
+Same marketplace, same skills; `codex mcp login obto` completes the Google OAuth sign-in in your browser. The Codex package is [`plugins/obto-codex`](./plugins/obto-codex/).
 
 **Use the skill files directly (every other harness).** The skills are plain-markdown `SKILL.md` folders — portable to any agent harness that reads skills or instruction files:
 
@@ -89,7 +95,7 @@ The [`SKILL.md`](./SKILL.md) file is a set of instructions that teaches AI model
 
 Without this skill file, the AI won't know OBTO's conventions and will produce code that doesn't deploy correctly. With it, the AI becomes an autonomous developer on your OBTO instance.
 
-Where your client supports plugins (Claude Code, Claude Cowork, Codex), prefer the plugin — the same doctrine split into six auto-loading task skills, with the MCP connection preconfigured.
+Where your client supports plugins (Claude Code, Claude Cowork, Codex), prefer the plugin — the same doctrine split into seven auto-loading task skills, with the MCP connection preconfigured.
 
 ---
 

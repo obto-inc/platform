@@ -18,6 +18,7 @@ Build, deploy, and operate apps on the [OBTO platform](https://app.obto.co) from
 | `obto-memory` | Using `obto_remember`/`obto_recall` (Hindsight) effectively — scoping modes, keys, recall-before-work |
 | `obto-mcp-extend` | Publishing per-tenant MCP tools, resources, and prompts through the triad CRUD (`obto_create_mcp_tool` …) — handler and schema rules, required annotations, Zod v4 traps, and catalog-freshness discipline |
 | `obto-troubleshooting` | Structured error envelopes, the common error codes, log-based and visual (`obto_capture_preview`) debugging, and why a preview URL isn't proof |
+| `obto-platform-boundary` | Why every OBTO workflow stays inside MCP — the symptom-to-MCP-action map instead of `kubectl`, pod recycles, shells, or a DNS console, and how to report what MCP genuinely cannot fix |
 
 ## Setup
 
@@ -29,6 +30,8 @@ Build, deploy, and operate apps on the [OBTO platform](https://app.obto.co) from
    ```
 
 2. Start a new conversation. The first time Claude connects to the OBTO MCP server, you'll be prompted to sign in via Google OAuth in your browser — approve once and the connection is remembered (a first-time sign-in provisions your workspace automatically). No API token or environment variable is required.
+
+   To pick up a later release: `claude plugin marketplace update obto` then `claude plugin update obto@obto` — a marketplace clone never refreshes itself, and reinstalling an already-installed plugin is not an upgrade.
 
    Authentication is handled by OAuth against your OBTO account; all tenancy and permission enforcement happens server-side against that identity — the plugin grants no access your account doesn't already have.
 

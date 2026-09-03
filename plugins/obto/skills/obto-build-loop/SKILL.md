@@ -6,7 +6,7 @@ description: >
   OBTO app", or any task that creates or modifies OBTO application
   artifacts. Covers the stateless contract, the reliability-first build
   loop, and the done-means-done smoke gate.
-version: 0.8.0
+version: 0.9.0
 ---
 
 # OBTO App Build Loop
@@ -27,13 +27,22 @@ Work in this order; do not skip steps:
 2. **Scaffold.** Use `obto_scaffold_app` for new apps (creates record + working skeleton in one call), passing `buildContract` and `kind`: `'public'` for a browser web app (index page + App.tsx + App.css, ESM imports + relative `./` paths) or `'native'` for an OBTO shell component (ui_template + policy_client + script_client, window-global libs + `return ComponentName;`). The skeleton passes `obto_validate_app` immediately and writes each artifact to its correct collection. The response includes structured `nextSteps` — follow them in order.
 3. **One vertical slice.** Ship a single end-to-end path (one page, one route, one script) and verify it works before expanding. Anything beyond the contract's slice is a NEW slice the human approves — not a silent addition.
 4. **Verify after every write.** After each `obto_upsert_record` / route change, read the artifact back (`fetch` by id `<collection>::<app>::<domain>::<name>`, or `obto_grep_artifact` for a slice of a large one) and confirm the content landed. Never claim a write succeeded without reading it back. For a code-bearing script, `obto_validate_script` also runs **by reference** — omit `script` and name the stored artifact — so you can validate exactly what the platform stored, not what you meant to send. (Known false-fire: a `pltf_script_server` module containing ESM syntax fails by-reference validation at line 1; that one signature is benign.)
-5. **Smoke gate before "done" — a preview URL is NOT verification.** `obto_generate_preview` returning a URL only proves the preview infra responded, not that the app works. "Done" means all of: `obto_validate_app` returns no errors; every public API route called via `obto_invoke_route` (or `curl --max-time 30`) returns the expected status + JSON shape — an HTML 200, a non-200, or a 524/timeout on an `/api/...` route is a failure, and a degraded-mode UI fallback is also a failure signal; `pltf_log` (via `obto_db_query`) shows no runtime errors; and, where the operator has provisioned headless Chromium, `obto_capture_preview` confirms the UI actually renders and its `console` / `pageErrors` / `failedRequests` are clean. See `obto://guide/public-app-baseline`.
+5. **Smoke gate before "done" — verify semantically, on the surface a real visitor uses.** A preview URL proves only that the preview infra responded, and **HTTP 200 proves nothing at all**: OBTO's own "Site Missing" / "domain was not found" shells are served with status 200, so a status-only check certifies broken apps as working. "Done" means all of:
+   - `obto_validate_app` returns no errors.
+   - Every public API route called via `obto_invoke_route` returns the expected status, **content type, and JSON shape**. An HTML 200 on an `/api/...` route is a failure, never a response; so is a non-200, a 524/timeout, or a degraded-mode UI fallback.
+   - The receipt says WHICH surface answered. `connectVia:'canonical'` means the real canonical host served it; a `tenant_ingress_semantic_fallback` (with `canonicalAttempt` + `layerVerdict`) means the canonical host served a platform shell and the tool fell back — that is a finding to report, not a pass. **Fallback success is not canonical success.**
+   - For a published app, `obto_get_build_status` shows `publish.status: 'published'` with its per-surface `verify` evidence, and you have READ any `caveats` (a publish can be genuinely published and still carry a known platform degradation).
+   - `pltf_log` (via `obto_db_query`) shows no runtime errors.
+   - Where headless Chromium is provisioned, `obto_capture_preview` confirms the UI renders with clean `console` / `pageErrors` / `failedRequests`.
+   - Best proof of all: exercise one real user action end to end and confirm it persisted (submit/vote/save, then read the record back through the app's own API).
+
+   If a check fails in a way that looks like infrastructure, do NOT reach for infrastructure — see the `obto-platform-boundary` skill. See also `obto://guide/public-app-baseline`.
 
 ## Artifact rules that bite
 
 - Server scripts (`pltf_script_server`) need **named exports matching the record name** (`module.exports.MyService = MyService`, or `export const MyService` / `export default`). Bare `module.exports =` breaks `xe.*` lookup.
 - **ESM + TypeScript are fine in server scripts AND routes.** The engine transpiles on save/compile (`import`/`export` → `require`/`module.exports`, types stripped): the stored `script` is the compiled output, `ts_source` keeps your original. So you may write `import { z } from 'zod'` and `interface`/type annotations directly. Two rules: (a) **npm imports resolve from the platform's `node_modules`** — a package OBTO doesn't ship must be added to the platform first (it is NOT auto-installed per app); (b) **reference another OBTO artifact as `xe.<record>`, never a relative path** — `import { helper } from './services/foo'` becomes `const { helper } = xe.foo` (or `@xe/foo`, which the compiler rewrites to `xe.foo`). Record names are the artifact names; a synced repo path like `services/vendor-bill.service` lands as record `services_vendor_bill_service` → `xe.services_vendor_bill_service`.
-- In route/server code use `ob.db` with promise-style `await` — callback wrappers hang and return 524.
+- In route/server code Mongo access is `ob.db`, which is **NOT promise-native**. Only `find()` returns something awaitable (a cursor → `.project().toArray()`). `findOne`/`create`/`update`/`updateMany`/`delete`/`getCount`/`findAndUpdate` take a trailing callback and return `undefined`; a bare `await` on them resolves to `undefined`, and `findOne`/`create` silently substitute a no-op callback so the result vanishes with no error. **Promisify — do not drop the callback:** `await new Promise((resolve, reject) => ob.db.findOne(coll, q, {}, (err, r) => (err ? reject(err) : resolve(r))))`. A handler whose promise never settles is the classic 524 / `timeout_no_response`.
 - Pages: a page named `index` serves at the app root; every app needs one.
 - Omit `host` on browser-facing artifacts when the app already has them — the canonical host auto-fills, and a mismatched host is rejected with `host_mismatch`.
 - Routes are managed by `obto_create_route` / `obto_update_route`, never by `obto_upsert_record`.
@@ -63,7 +72,7 @@ The standard edit loop on a large artifact is: `grep_artifact` to find the lines
 
 ## Large artifacts
 
-If a source file is too big for one tool call, use the chunked-upload path; for a new source too large to emit as chunks at all, use deploy-by-reference (`obto_stage_chunk({action:'from_url'})`). See the `obto-deploy` skill. To EDIT an existing artifact, patch it in place (`obto_patch_artifact`) rather than re-uploading — even when it is large. One platform caveat: patching a server module that is loaded into `xe` at boot takes effect only after a pod reboot, whereas a normal app artifact patches live.
+If a source file is too big for one tool call, use the chunked-upload path; for a new source too large to emit as chunks at all, use deploy-by-reference (`obto_stage_chunk({action:'from_url'})`). See the `obto-deploy` skill. To EDIT an existing artifact, patch it in place (`obto_patch_artifact`) rather than re-uploading — even when it is large. One platform caveat: a boot-loaded server module (`pltf_script_server`, `pltf_policy_server`) is stored instantly but activates asynchronously — the receipt says `pending_platform_activation` — whereas a normal app artifact is live per request. Activation is the platform's responsibility: use `obto_reload_scripts` where the runtime supports it, otherwise verify with a probe only the new code can answer. Never instruct anyone to restart or recycle anything (see the `obto-platform-boundary` skill).
 
 ## Media files (images, video, PDFs) → `obto_upload_media`
 
