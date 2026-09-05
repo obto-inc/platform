@@ -19,6 +19,7 @@ Build, deploy, and operate apps on the [OBTO platform](https://app.obto.co) from
 | `obto-mcp-extend` | Publishing per-tenant MCP tools, resources, and prompts through the triad CRUD (`obto_create_mcp_tool` …) — handler and schema rules, required annotations, Zod v4 traps, and catalog-freshness discipline |
 | `obto-troubleshooting` | Structured error envelopes, the common error codes, log-based and visual (`obto_capture_preview`) debugging, and why a preview URL isn't proof |
 | `obto-platform-boundary` | Why every OBTO workflow stays inside MCP — the symptom-to-MCP-action map instead of `kubectl`, pod recycles, shells, or a DNS console, and how to report what MCP genuinely cannot fix |
+| `obto-feedback` | Reviewer feedback left on the DevZone preview — how it reaches an agent (`obto_list_feedback` / `obto_get_feedback`, the `[obto-feedback]` nudge on map/graph/search results, the Agent Bridge thread `feedback-<app>`), how to read the annotated screenshot, and how a fix is closed out |
 
 ## Setup
 
