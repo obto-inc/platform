@@ -28,10 +28,10 @@ OBTO Inc. was founded in 2015. The platform has been running production workload
 ## Quick Start
 
 ### 1. Sign Up
-Go to [obto.co](https://www.obto.co) and click **Sign in**. Authenticate with Google. Your OBTO instance is created automatically.
+Go to [obto.co/site/ob/signup](https://www.obto.co/site/ob/signup) and continue with Google. Your OBTO workspace is created automatically.
 
-### 2. Copy Your MCP Endpoint
-After signing in, you'll see your personal MCP server URL on the landing page. Copy it.
+### 2. The MCP Endpoint
+Everyone uses the same endpoint: `https://app.obto.co/ms/mcp`. Signing in with OAuth identifies you and your workspace; there is no personal URL and no API key to copy.
 
 ### 3. Teach Your AI Client — plugin or skill file
 
