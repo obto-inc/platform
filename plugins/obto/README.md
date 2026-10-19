@@ -12,7 +12,7 @@ Build, deploy, and operate apps on the [OBTO platform](https://app.obto.co) from
 
 | Skill | What it teaches Claude |
 |---|---|
-| `obto-build-loop` | The reliability-first app build workflow: stateless contract, scaffold (public/native) → vertical slice → smoke gate (incl. `obto_capture_preview` visual check, preview-is-not-verification), grep→patch edits, verify-after-write |
+| `obto-build-loop` | The reliability-first app build workflow: stateless contract, scaffold (public/native) → vertical slice → review loop (`obto_review_change`, tests, done gate) → smoke gate (incl. `obto_capture_preview` visual check, preview-is-not-verification), grep→patch edits, verify-after-write |
 | `obto-deploy` | Choosing the write path (patch-in-place for edits vs. upsert vs. chunked upload vs. `from_url` deploy-by-reference), deployment order, sha256 verification, and post-deploy checks |
 | `obto-upload` | Getting a local media/binary file into the file store and back as a served URL: signed-URL direct upload (`obto_request_upload_url`, primary), chunked integrity-gated staging (fallback), server-side URL fetch, and the domain/body rules |
 | `obto-memory` | Using `obto_remember`/`obto_recall` (Hindsight) effectively — scoping modes, keys, recall-before-work |
