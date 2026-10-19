@@ -37,7 +37,7 @@ OBTO tools return structured errors: `{ok:false, error:<code>, hint:<what to do>
 
 **`done_gate_failed`** — `obto_build_app` refused the build because the done gate failed and the platform (or this tenant) runs the gate in enforce mode. The message names each failing record and rule (`rule:line`). Run `obto_review_change` on those records, fix every error finding, save, and check `obto_review_change` mode `gate` until it returns `gateOk: true`; then build again. Do not rename the record, and do not ask for an override.
 
-**`forbidden_domain`** (from `obto_review_change`) — the review or gate named an app outside your own tenant. Pass your own `domain`; a non-super identity can review only its own apps.
+**`forbidden_domain`** (from `obto_review_change`) — the review or gate named an app outside your own tenant. Pass your own `domain`: every identity reviews its own tenant's apps, and only the platform operator (identity domain `dev`) may review another tenant. A tenant owner's `super` role does not change this.
 
 **`runner_busy`** (from `obto_run_tests`) — another test run is in progress. Wait a few seconds and run again; do not start parallel runs.
 
