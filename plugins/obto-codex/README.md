@@ -10,6 +10,7 @@ Build, deploy, verify, and troubleshoot applications on the
 - Ordered deployment with the right write path: patch-in-place for edits, chunked upload and `from_url` deploy-by-reference for large new artifacts
 - Line-level editing with grep-to-patch reads
 - Media/binary upload into the file store: signed-URL direct upload (`obto_request_upload_url`, primary), chunked integrity-gated staging (fallback), and server-side URL fetch — returning a served viewer URL
+- Review loop after every save: `obto_review_change` until no error findings, tests (or "tests not run"), and the done gate (`gateOk: true`)
 - Done-means-done verification: validate, exercise every route, and visual-debug with `obto_capture_preview` (a preview URL is not proof)
 - Durable OBTO memory guidance
 - Per-tenant MCP extension: publish custom tools, resources, and prompts through the triad CRUD (`obto_create_mcp_tool` …)

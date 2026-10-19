@@ -29,7 +29,7 @@ Reproducing a whole large file just to change a few lines is the trap. If the ch
 
 1. Backend first (`pltf_script_server`), then routes, then browser-facing artifacts (pages, JS, CSS).
 2. Every write carries explicit `appName` + `domain` (stateless contract).
-3. Verify after write: fetch the artifact back and compare before moving on. For code-bearing artifacts, also run `obto_validate_script` **by reference** (omit `script`, name the stored artifact) so the validation covers what actually landed. (Known benign false-fire: an ESM-bearing `pltf_script_server` module fails by-reference at line 1.)
+3. Verify after write: fetch the artifact back and compare before moving on. For code-bearing artifacts, also run `obto_validate_script` **by reference** (omit `script`, name the stored artifact) so the validation covers what actually landed. (Known benign false-fire: an ESM-bearing `pltf_script_server` module fails by-reference at line 1.) Then run `obto_review_change` with `targets` = the records you wrote, and fix every error finding before moving on (`obto-build-loop` step 5).
 4. Exercise one success-path call per new/changed route or tool before calling the deploy done.
 
 ## Large artifacts — the chunked path

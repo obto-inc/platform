@@ -35,6 +35,14 @@ OBTO tools return structured errors: `{ok:false, error:<code>, hint:<what to do>
 
 **`missing_build_contract`** (3.5.2) — `obto_scaffold_app` requires a `buildContract`: one paragraph with purpose, first vertical slice, and done criteria. The error's hint and example show the exact shape. If the human's request is too vague to write one, ask them — don't invent scope.
 
+**`done_gate_failed`** — `obto_build_app` refused the build because the done gate failed and the platform (or this tenant) runs the gate in enforce mode. The message names each failing record and rule (`rule:line`). Run `obto_review_change` on those records, fix every error finding, save, and check `obto_review_change` mode `gate` until it returns `gateOk: true`; then build again. Do not rename the record, and do not ask for an override.
+
+**`forbidden_domain`** (from `obto_review_change`) — the review or gate named an app outside your own tenant. Pass your own `domain`; a non-super identity can review only its own apps.
+
+**`runner_busy`** (from `obto_run_tests`) — another test run is in progress. Wait a few seconds and run again; do not start parallel runs.
+
+**A review finding you believe is wrong** — fix the code if you can. A warn/info finding may be suppressed with `// obto-review-ignore <rule> -- <reason>` on or above the line; an error cannot. If an error finding is a false positive, report it with the rule id and line (`obto-feedback`) and leave the record failing. Never dodge the gate.
+
 **Operator-domain refusal** (3.5.2) — scaffolding into a platform-operations domain (e.g. `dev`) is refused by default. Ask the human for the target tenant domain; only intentional platform utilities use `confirmOperatorDomain: true` (super-user only, logged).
 
 **`name_collision`** — an upsert with `_id` hit a different existing record at the same (name, app, domain). Commit without `_id` to update the loader-canonical record (`existingId` in the error); report duplicates for cleanup — they can shadow deploys.
