@@ -1,7 +1,7 @@
 {
   "name": "obto",
-  "version": "0.13.0",
-  "description": "Build, deploy, and operate apps on the OBTO platform — one MCP connection (Google sign-in, auto-provisioned workspace), a /obto:start session command, plus skills for the build loop, large-file deploys (patch-in-place, chunked, and deploy-by-reference), media/binary upload (signed-URL and chunked), agent memory, per-tenant MCP extension (custom tools, resources, prompts), troubleshooting, and the platform boundary that keeps every workflow inside MCP.",
+  "version": "0.14.0",
+  "description": "Build, deploy, and operate apps on the OBTO platform — one MCP connection (Google sign-in, auto-provisioned workspace), a /obto:start session command, plus skills for the build loop, large-file deploys (patch-in-place, chunked, and deploy-by-reference), media/binary upload (signed-URL and chunked), agent memory, per-tenant MCP extension (custom tools, resources, prompts), the app's Postgres database (read queries and reviewed schema changes), troubleshooting, and the platform boundary that keeps every workflow inside MCP.",
   "author": {
     "name": "OBTO"
   },

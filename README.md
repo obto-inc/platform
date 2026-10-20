@@ -42,7 +42,7 @@ Everyone uses the same endpoint: `https://app.obto.co/ms/mcp`. Signing in with O
 /plugin marketplace add obto-inc/platform
 /plugin install obto@obto
 ```
-Installs the OBTO MCP server connection plus seven task skills (build loop, deploys & large files, media upload, memory, MCP extension, troubleshooting, platform boundary). Details: [`plugins/obto`](./plugins/obto/).
+Installs the OBTO MCP server connection plus nine task skills (build loop, deploys & large files, media upload, memory, MCP extension, Postgres database, reviewer feedback, troubleshooting, platform boundary). Details: [`plugins/obto`](./plugins/obto/).
 
 **OpenAI Codex**
 ```bash
@@ -95,7 +95,7 @@ The [`SKILL.md`](./SKILL.md) file is a set of instructions that teaches AI model
 
 Without this skill file, the AI won't know OBTO's conventions and will produce code that doesn't deploy correctly. With it, the AI becomes an autonomous developer on your OBTO instance.
 
-Where your client supports plugins (Claude Code, Claude Cowork, Codex), prefer the plugin — the same doctrine split into seven auto-loading task skills, with the MCP connection preconfigured.
+Where your client supports plugins (Claude Code, Claude Cowork, Codex), prefer the plugin — the same doctrine split into nine auto-loading task skills, with the MCP connection preconfigured.
 
 ---
 
