@@ -7,43 +7,44 @@ description: >
   or mentions obto_create_mcp_tool / dynamic tools. Covers the per-tenant
   MCP triad (tools, resources, prompts): schema and handler rules, the
   required annotations, Zod v4 traps, and catalog-freshness discipline.
-version: 0.6.0
+version: 0.7.0
 ---
 
 # Extending the OBTO MCP surface (per-tenant tools, resources, prompts)
 
-The OBTO MCP server is itself extensible from inside a session: the triad CRUD tools — `obto_{create,update,delete,list}_mcp_{tool,resource,prompt}` — register per-domain dynamic tools, markdown resources, and prompt templates that the server then serves alongside its built-ins to every session in that domain. This is how a tenant grows its own MCP surface without touching server code.
+The triad tools `obto_{create,update,delete,list}_mcp_{tool,resource,prompt}` register per-domain dynamic tools, markdown resources and prompt templates that the server serves beside its built-ins to every session in that domain. **The full contract is `obto://guide/mcp-tools`** (`obto_whoami` → `availableResources`): read it before the first create. Where it and a tool description disagree, follow the tool description.
 
-All triad calls are **domain-scoped**: they require `domain` (from `obto_whoami`) but no `appName`. Regular users target their own domain; super-users may target any tenant. Exposure follows domain inclusion — an artifact registered at domain X is visible to sessions whose domain resolves to X (or to `global`/a parent).
+Triad calls take `domain` (from `obto_whoami`), no `appName`. A session sees the artifacts of its own domain, `global` and its parent domains. **Creating or updating a tool or prompt is operator-only** (3.5.93): other callers get `super_user_required` unless the operator lists the tenant in the global property `co.obto.mcp.dynamic_tools.allow_non_superuser`.
 
 ## Dynamic tools (`obto_create_mcp_tool`)
 
-- **Name**: lowercase, underscores only (`^[a-z][a-z0-9_]*$`, ≤50 chars), unique per domain. It becomes available to all sessions in the domain.
-- **`zodSchemaString`**: the input schema as a Zod v4 string, e.g. `z.object({query: z.string()})`. **Zod v4 trap:** `z.record(valueSchema)` with one argument crashes tool listing for the whole domain — always write the two-argument form, `z.record(z.string(), valueSchema)`.
-- **`handlerFunction`**: a JavaScript **function expression**, not a bare statement body — write it `async` so you can `await`:
-  `async (args) => { const rows = await ...; return { content: [{ type: 'text', text: JSON.stringify(rows) }] }; }`
-  `args` is the validated input. The handler compiles in a vm sandbox and runs wrapped in a timeout + structured envelope (`dynamic_tool_failed`), so a broken handler fails loudly per-call instead of taking the session down.
-- **Never save an empty or stub handler.** A record whose `handlerFunction` is blank fails to compile at every session init — a dead tool that error-logs forever. If a tool isn't ready, set `isActive: false` or delete it.
-- **Annotations are required and reviewed**: `readOnlyHint`, `destructiveHint`, `openWorldHint` (booleans, `idempotentHint` optional) plus `annotationJustifications` — a short written justification for each. Set them truthfully; they drive client-side confirmation behavior.
+- **Name**: `^[a-z][a-z0-9_]*$`, 3–50 chars, unique per domain.
+- **`zodSchemaString`**: Zod v4, e.g. `z.object({q: z.string().describe("...")})`. Write `z.record(z.string(), v)` (two arguments). A schema that cannot serialize to JSON Schema (functions, transforms) falls back to `z.object({})` and every argument is stripped.
+- **`handlerFunction`**: a **function expression**, e.g. `async (args) => ({ content: [{ type: 'text', text: '...' }] })`. Any other return value is wrapped as JSON text; a returned `{ok:false}` is flagged as an error. Never save an empty or stub handler — set `isActive: false` instead.
+- **Sandbox**: 30 s, 1 MiB result, a blocklist over the whole source including comments (`require(`, `import(`, `eval(`, `Function(`, `process`, `__dirname`, `__filename`, `child_process`, `Buffer`); no `setTimeout`, `fetch`, `URL`. A failure returns `dynamic_tool_failed`. `sandboxMode: "strict"` (3.5.72) gives only stdlib + `obtoApi` (`obtoApi.data` on the tenant's exposed collections); the default `legacy` adds `ob` and `xe`. Prefer `strict` when the tool needs only tenant data.
+- **Annotations**: `readOnlyHint`, `destructiveHint`, `openWorldHint` plus `annotationJustifications` (10+ chars each). Set them to what the tool CAN do.
+- **MCP Apps view** (3.5.68): create a resource at `ui://<domain>/<view>.html` with `mimeType: "text/html;profile=mcp-app"`, then pass `ui: { resourceUri }` on the tool and check `uiResourceCheck`.
+- Every call is metered; read it with `obto_usage`.
 
-## Resources (`obto_create_mcp_resource`)
+## Resources and prompts
 
-Domain-scoped reference material (markdown by default) served at a URI you choose (e.g. `obto://<team>/playbook`), unique within the domain. Publish per-tenant doctrine here — conventions, runbooks, contracts — instead of re-pasting it into every conversation; any connected agent can pull it on demand. Join array-of-lines sources with `\n` before publishing.
+Resources: markdown by default, at a URI unique in the domain (e.g. `obto://<team>/playbook`). Publish per-tenant doctrine here instead of re-pasting it. Prompts: the `handlerFunction` runs in the strict sandbox and returns `{ messages: [{ role, content: { type: 'text', text } }] }`; `argsSchema` is JSON-schema shaped.
 
-## Prompts (`obto_create_mcp_prompt`)
+## Tenant end users
 
-The `handlerFunction` (same vm sandbox as dynamic tools) must return an MCP `GetPromptResult`: `{ messages: [{ role, content: { type: 'text', text } }] }`. `argsSchema` is a JSON-schema-shaped object: `{ type: 'object', properties: {...}, required: [...] }`.
+Give them `https://app.obto.co/ms/mcp?scope=tenant` (`tenantScopedMcpUrl` in `obto_whoami`): only the tenant's own and parent-domain tools, resources and prompts, no OBTO developer tools. Each tool still enforces tenancy.
 
-## Catalog freshness — the discipline that bites
+## Catalog freshness and the verify loop
 
-Creating a tool pushes `tools/list_changed`, but most clients cache the tool catalog at connect time, so **a tool you just created is typically NOT callable in the same session that created it**. The verify loop:
+A create/update/delete refreshes every live session that follows the domain and sends `tools/list_changed` (3.5.71). Claude Code can call the new tool in the same session; clients that cache the catalog at connect need a reconnect. A super-user who writes another tenant's tool follows that tenant automatically.
 
-1. `obto_list_mcp_tools(domain)` — confirm the tool is registered and active.
-2. Reconnect the connector (or start a fresh session) so the client pulls the new catalog.
-3. Call the tool once on its success path and check the envelope.
+1. `obto_list_mcp_tools(domain)` — registered and active.
+2. Call it once on its success path; check the envelope.
+3. Call it once on a known failure path — the error must be explicit.
+4. `obto_usage(domain)` — the call is metered.
 
-Don't declare a dynamic tool done on the strength of an `ok: true` create response — that proves the record write, not that the tool compiles, lists, and answers.
+An `ok: true` create proves the record write, not that the tool compiles, lists and answers.
 
 ## Updating and removing
 
-`obto_update_mcp_tool` edits an existing definition in place (same name + domain); `obto_delete_mcp_tool` removes it. The same pair exists for resources and prompts. After any schema reshape, the reconnect rule above applies again — a client holding the old shape will send mis-typed arguments until it refreshes.
+`obto_update_mcp_tool` edits in place (`ui: null` removes a view); `obto_delete_mcp_tool` deactivates. The same pair exists for resources and prompts.
