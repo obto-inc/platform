@@ -14,6 +14,7 @@ Build, deploy, verify, and troubleshoot applications on the
 - Done-means-done verification: validate, exercise every route, and visual-debug with `obto_capture_preview` (a preview URL is not proof)
 - Durable OBTO memory guidance
 - Per-tenant MCP extension: publish custom tools, resources, and prompts through the triad CRUD (`obto_create_mcp_tool` …)
+- The app's own Postgres database: read-only queries (`obto_pg_query`) and reviewed schema changes (`obto_pg_check` → `obto_pg_propose` → OBTO approves and applies), with the interim rules for tables Prisma still reads
 - Error-envelope, routing, database, host, timeout, and stale-catalog troubleshooting
 - The platform boundary: every workflow stays inside MCP — never `kubectl`, pod recycles, shells, or a DNS console
 
