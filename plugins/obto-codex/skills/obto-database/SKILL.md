@@ -46,7 +46,7 @@ If these tools are missing from your tool list, the connection predates the rele
 - **One at a time:** run queries one after another, never in parallel. `query.busy` means the app's connection pool has no room to spare right now — wait a few seconds and try once more.
 - It **cannot write**. For writing data, see "Saving data" below.
 
-Two useful first reads:
+Two useful first reads (one per call):
 
 ```sql
 SELECT relname, n_live_tup FROM pg_stat_user_tables WHERE schemaname = 'public' ORDER BY relname;
@@ -73,7 +73,7 @@ A rehearsal really runs on production (rolled back, but holding the same locks w
 ## Units: what commits together
 
 - `tx` — one transaction; may hold several statements.
-- `nontx` — exactly one statement that cannot run in a transaction: `CREATE/DROP INDEX CONCURRENTLY`, `ALTER TYPE … ADD VALUE`. It cannot be rehearsed (it is listed in `rehearsal.noRehearsal`, and the approver must note that).
+- `nontx` — exactly one statement that cannot run in a transaction: `CREATE/DROP INDEX CONCURRENTLY`, `ALTER TYPE … ADD VALUE`. A `CONCURRENTLY` index cannot be rehearsed: it is listed in `rehearsal.noRehearsal`, and the approver must note that.
 - `backfill` — you give `{table, key, set, where, batchSize, pauseMs, maxBatches}`; the tool writes a batched, resumable `UPDATE`. It only updates.
 - Every `tx` and `nontx` unit needs `expect`: one read-only `SELECT` returning one boolean, true once the unit is applied — it is how a stopped change resumes. `expect` and a backfill's `set` / `where` may call only built-in read functions.
 
