@@ -1,6 +1,6 @@
 {
   "name": "obto",
-  "version": "0.14.0",
+  "version": "0.14.1",
   "description": "Build, deploy, verify, upload media, extend the MCP surface, work with the app's Postgres database, and troubleshoot applications on the OBTO platform — entirely through MCP, never through infrastructure.",
   "author": {
     "name": "OBTO",
