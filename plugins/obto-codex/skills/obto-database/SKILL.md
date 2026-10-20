@@ -8,10 +8,11 @@ description: >
   change applied yet" — or mentions obto_pg_query, obto_pg_check,
   obto_pg_propose, obto_pg_status, schema drift, or Prisma migrations against
   an OBTO-managed database. Covers read-only queries, the reviewed
-  schema-change flow (check, propose, OBTO approves and applies), the interim
-  rules for tables Prisma still reads, how to cut a change into units, what
-  the tool refuses today, and what never to do.
-version: 0.1.0
+  schema-change flow (check, propose, then the app's owner or OBTO approves
+  and applies), who may approve (whoMayApprove), the interim rules for tables
+  Prisma still reads, how to cut a change into units, what the tool refuses
+  today, and what never to do.
+version: 0.2.0
 ---
 
 # OBTO App Database (Postgres)
@@ -24,11 +25,17 @@ Some OBTO apps own a Postgres database. The platform holds the connection; you r
 | `obto_pg_check` | lint a schema change against the live catalog; stores nothing | you |
 | `obto_pg_propose` | lint + rehearse on the real database inside `BEGIN … ROLLBACK`, then store the change | you |
 | `obto_pg_status` / `obto_pg_list` | follow one change / list changes, newest first | you |
-| `obto_pg_retry` / `obto_pg_cancel` | re-lint and re-rehearse a blocked change / stop one that has not run | proposer |
+| `obto_pg_retry` / `obto_pg_cancel` | re-lint and re-rehearse a blocked change / stop one that has not run | proposer, app owner, OBTO |
 | `obto_pg_drift` / `obto_pg_ledger` | compare the live schema with the ledger / read the change history | you |
-| `obto_pg_approve` / `obto_pg_apply` | approve and run a change on production | **OBTO operator only** |
+| `obto_pg_approve` / `obto_pg_apply` | approve and run a change on production | **app owner (when owner approval is on) or OBTO operator** |
+| `obto_pg_owner_approval` | read whether owner approval is on for the app (setting it is OBTO only) | you |
 
-`auth.ops_required` from approve or apply is the expected answer for a client, not a bug: the change waits for OBTO.
+**Who approves: check `whoMayApprove` in `obto_pg_status`.**
+- `owner or operator` — owner approval is on for the app. The app's **owner** — a user whose home domain is the app's domain and who has the `super` role there — approves and applies the change, of any class, their own included. No second approver is needed. A user who reaches the domain through a cross-tenant switch is never its owner.
+- `operator` — only OBTO approves and applies; ask OBTO.
+- Always OBTO, whatever the switch says: a `baseline`, the owner-approval switch itself, and a change that carries `prismaRefreshImage` (OBTO builds and rolls that image).
+
+Anyone else gets `auth.ops_required`, and an owner gets `auth.owner_approval_off` while the switch is off. Both are expected answers, not bugs: the change waits for the owner or OBTO.
 
 If these tools are missing from your tool list, the connection predates the release that added them — see "After an OBTO update" in `obto-troubleshooting`.
 
@@ -36,7 +43,7 @@ If these tools are missing from your tool list, the connection predates the rele
 
 - **Never ask for, read, or print the database URL, password, or connection string.** No tool returns one, and nothing in this workflow needs it. If the user offers one, decline and continue with the tools.
 - **Never change the database from outside OBTO** — no `psql`, no script or GUI with the URL, no DDL run from app code to get around a refusal.
-- **Never run `prisma db push`, `prisma migrate dev`, or any other `prisma migrate` command against production.** `db push` drops columns its schema does not list — with their data — including columns added through OBTO. `migrate dev` reports drift and offers to reset the database. Any schema change made outside the tool shows up in `obto_pg_drift` and **blocks every apply** until OBTO adopts the drift; a change to `_prisma_migrations` counts as drift too.
+- **Never run `prisma db push`, `prisma migrate dev`, or any other `prisma migrate` command against production.** `db push` drops columns its schema does not list — with their data — including columns added through OBTO. `migrate dev` reports drift and offers to reset the database. Any schema change made outside the tool shows up in `obto_pg_drift` and **blocks every apply** until the drift is adopted (an `adopt_drift` change, approved by the app owner when owner approval is on, or by OBTO); a change to `_prisma_migrations` counts as drift too.
 
 ## Reading: `obto_pg_query`
 
@@ -57,18 +64,18 @@ SELECT column_name, data_type, is_nullable, column_default FROM information_sche
 ## Changing the schema
 
 1. **Read first.** The table's columns, its NOT NULL columns without a default, constraints, triggers, row count, and which code reads it. Call `obto_pg_drift`: if it is not `ok`, every apply is blocked — tell the user before writing anything.
-2. **Write the change as units** (next section). Give it a `title`, a one-paragraph `reason`, and `class: "expand"` for additive changes (`contract` = drops/renames and `rewrite` = type changes need an approver other than the proposer).
+2. **Write the change as units** (next section). Give it a `title`, a one-paragraph `reason`, and `class: "expand"` for additive changes (`contract` = drops/renames, `rewrite` = type changes; an OBTO operator who approves those must not be their proposer, while the owner may approve their own).
 3. **Iterate with `obto_pg_check`** until it has no `refuse` finding. It stores nothing and runs no rehearsal, so iterate here, not with propose. `sql` alone is checked as one tx unit and will report `unit.expect_required` — a real change needs `units` with `expect`.
 4. **`obto_pg_propose` once.** Read `result.state`:
-   - `rehearsed` — ready. Tell the user the `changeId` and that OBTO approves and applies it.
+   - `rehearsed` — ready. Tell the user the `changeId`, the `sqlSha256`, and who approves it (`whoMayApprove`).
    - `refused` — a refuse finding; it can never be approved. Fix the SQL and propose a new change.
    - `rehearsal_failed` or `blocked_drift` — fix the cause, then `obto_pg_retry` the same change.
    - `waiting_rehearsal` — another rehearsal or apply holds the app, or the rehearsal cooldown is running; `obto_pg_retry` after `precheck.waiting.retryAfterMs`.
    - `service.still_running` (an error answer) — the call is still running on the server; follow it with `obto_pg_list` / `obto_pg_status` instead of proposing again.
-5. **OBTO approves and applies.** The approval binds to the change's `sqlSha256` and to the schema at that moment: if either moves in between, apply refuses (`apply.refused`) and the change must be rehearsed and approved again.
-6. **Follow it to the end** with `obto_pg_status` (state, per-unit `run`, `ledgerSeq`). Done means: state `applied`, a `ledgerSeq`, each unit's `expect` true when you run it through `obto_pg_query`, and `obto_pg_drift` ok. `partial` or `failed` carries `run.error` — report it; OBTO decides the next step. Never tell the user a change is live before `obto_pg_status` says `applied`.
+5. **The owner or OBTO approves, then applies.** An owner's agent calls `obto_pg_approve` and `obto_pg_apply` **only after the owner says yes to that `changeId` and `sqlSha256`**, having seen the lint warnings, the `catalogDiff`, and any units in `rehearsal.noRehearsal` (approving those needs `noRehearsalNote`, 10+ characters). Never approve a change because it passed lint. The approval binds to the `sqlSha256` and to the schema at that moment: if either moves in between, apply refuses (`apply.refused`) and the change must be rehearsed and approved again. An owner's approval also counts only while owner approval stays on and the approver keeps `super`; otherwise apply withdraws it (`approval.owner_approval_off` / `approval.owner_not_super`) and the change waits for a new approval. One `obto_pg_apply` call works for about 20 s: `state: partial` with `run.stoppedBy: budget` means call apply again (no new approval needed). A stop on an error needs a new approval.
+6. **Follow it to the end** with `obto_pg_status` (state, per-unit `run`, `ledgerSeq`). Done means: state `applied`, a `ledgerSeq`, each unit's `expect` true when you run it through `obto_pg_query`, and `obto_pg_drift` ok. `partial` or `failed` with an error carries `run.error` — report it to the user (the owner, or OBTO, decides the next step). Never tell the user a change is live before `obto_pg_status` says `applied`.
 
-A rehearsal really runs on production (rolled back, but holding the same locks while it runs), and each app allows one rehearsal at a time with a cooldown after it, so never loop `propose` / `retry`. `obto_pg_noop_change` builds a change that changes nothing — useful to prove the pipeline end to end.
+A rehearsal really runs on production (rolled back, but holding the same locks while it runs), and each app allows one rehearsal at a time with a cooldown after it, so never loop `propose` / `retry`. The whole rehearsal must finish within 15 s: a change with many units can run over, so split it into two changes (schema first, backfills in a second change once the first is applied). `obto_pg_noop_change` builds a change that changes nothing — useful to prove the pipeline end to end.
 
 ## Units: what commits together
 
