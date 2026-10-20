@@ -42,7 +42,7 @@ In each case tell the user in one line: reconnect the OBTO connector (Claude app
 
 **`host_mismatch`** — browser-facing artifact host contradicts the app's canonical host. Omit `host` (it auto-fills) unless repairing records by `_id`.
 
-**`-32005` session/version refusal** — the server shipped a new tool surface and evicted the stale session. This is by design: reconnect/re-init the client; the fresh catalog fixes it. If a connector keeps showing old parameter shapes or coerces types wrongly (e.g. a boolean arriving as `"true"`), the client's cached catalog is stale — reconnect the connector.
+**`-32005` session/version refusal** — older servers only; since 3.5.89 a session opened before a release is rebuilt instead. Reconnect the connector. Old parameter shapes or wrong types (e.g. a boolean arriving as `"true"`) mean the client cached an old catalog — run the after-update check above.
 
 **`missing_build_contract`** (3.5.2) — `obto_scaffold_app` requires a `buildContract`: one paragraph with purpose, first vertical slice, and done criteria. The error's hint and example show the exact shape. If the human's request is too vague to write one, ask them — don't invent scope.
 

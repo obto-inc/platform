@@ -64,7 +64,7 @@ Because the bytes never pass through the agent, there is no emission ceiling —
 
 ## After a deploy that changes tool schemas
 
-If a deploy adds, removes, or reshapes MCP tools, connected clients may hold a stale catalog. The server evicts stale sessions via a version-mismatch refusal (`-32005`) which forces a clean re-init — if a client shows old schemas or mis-typed parameters, **reconnect the connector** rather than retrying calls.
+If a deploy adds, removes, or reshapes MCP tools, the server rebuilds open sessions and sends `tools/list_changed` (no more `-32005`). A client that cached its tool list still shows old schemas or mis-typed parameters: **reconnect the connector** and start a new chat rather than retrying calls.
 
 ## Failure modes
 

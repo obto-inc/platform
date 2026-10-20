@@ -27,7 +27,7 @@ The MCP tools are the whole platform. Create, deploy, diagnose, verify, and reco
 
 ## Rule 0.5 — the server teaches; read what it serves
 
-`obto_whoami` returns `availableResources`: server-served guides (`obto://guide/quickstart`, `obto://guide/blueprints`, `obto://guide/public-app-baseline`, `obto://guide/patching`, …), each with a `whenToRead` hint. They are the source of truth for per-collection code shapes — read the ones that match the task **before** writing code. Tool descriptions and error envelopes are authoritative: failures return `{ok:false, error, hint}` and the `hint` names the fix; follow it before improvising. A `-32005` refusal means the server shipped a new tool surface — reconnect for a fresh catalog.
+`obto_whoami` returns `availableResources`: server-served guides (`obto://guide/quickstart`, `obto://guide/blueprints`, `obto://guide/public-app-baseline`, `obto://guide/patching`, …), each with a `whenToRead` hint. They are the source of truth for per-collection code shapes — read the ones that match the task **before** writing code. Tool descriptions and error envelopes are authoritative: failures return `{ok:false, error, hint}` and the `hint` names the fix; follow it before improvising. Stale tools after a release (`sessionStale: true`): reconnect for a fresh catalog.
 
 ## The build loop
 
