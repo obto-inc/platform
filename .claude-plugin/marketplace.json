@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Official Claude plugins for the OBTO platform",
-    "version": "0.14.1"
+    "version": "0.14.2"
   },
   "plugins": [
     {
