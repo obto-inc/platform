@@ -46,4 +46,4 @@ Just describe what you want: "build a todo app on OBTO", "deploy this module to 
 ## Notes
 
 - The server is stateless (3.3.0+ contract): every call carries `appName` + `domain` explicitly. The skills handle this.
-- If tool schemas ever look stale after a platform release, disconnect/reconnect the MCP server — the server force-refreshes stale clients by design.
+- After a platform release, if tools are missing or look stale (`obto_whoami` shows `sessionStale: true`), reconnect the OBTO connector (Claude app: Settings > Connectors; Claude Code: `/mcp` > Reconnect) and start a new chat — an open chat keeps the tool list it started with.

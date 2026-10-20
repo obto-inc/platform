@@ -4,9 +4,10 @@ description: >
   This skill should be used when the user reports an OBTO error, asks "why
   did this OBTO call fail", mentions errors like collection_not_in_allowlist,
   must pass appName/domain, host_mismatch, scope_ownership_mismatch, stale
-  tools, or wants to debug an OBTO app via logs. Covers the structured error
-  envelope and the standard diagnosis paths.
-version: 0.8.0
+  tools, tools missing after an OBTO update, or wants to debug an OBTO app via
+  logs. Covers the structured error envelope, the after-update check, and the
+  standard diagnosis paths.
+version: 0.9.0
 ---
 
 # OBTO Troubleshooting
@@ -14,6 +15,16 @@ version: 0.8.0
 ## Read the envelope first
 
 OBTO tools return structured errors: `{ok:false, error:<code>, hint:<what to do>}`. The `hint` is authoritative — follow it before improvising. An "error" string inside an `ok:true` payload is NOT a failure.
+
+## After an OBTO update
+
+When OBTO announces a release, or a tool you expect is missing, or a tool behaves the old way, call `obto_whoami` and read `sessionVersion`, `podVersion` and `sessionStale`:
+
+- `sessionStale: true` — this connection was opened before the server was updated. New tools are absent from your tool list, and existing tools may still run their old code while answering `ok`.
+- `sessionStale: false`, but a tool named in the release note is missing from your tool list — the client cached the old list.
+- `sessionStale: null` — the server could not tell; judge by the tool list.
+
+In each case tell the user in one line: reconnect the OBTO connector (Claude app: Settings > Connectors; Claude Code: `/mcp` > Reconnect; Codex: restart Codex), then start a **new** chat or thread, because an open chat keeps the tool list it started with. Do not retry the missing tool or imitate it with other tools; after the reconnect, `obto_whoami` in the new chat should show `sessionStale: false` and the new tools.
 
 ## Common errors and what they actually mean
 
