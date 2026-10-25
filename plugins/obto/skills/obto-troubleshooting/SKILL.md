@@ -4,10 +4,10 @@ description: >
   This skill should be used when the user reports an OBTO error, asks "why
   did this OBTO call fail", mentions errors like collection_not_in_allowlist,
   must pass appName/domain, host_mismatch, scope_ownership_mismatch, stale
-  tools, tools missing after an OBTO update, or wants to debug an OBTO app via
-  logs. Covers the structured error envelope, the after-update check, and the
-  standard diagnosis paths.
-version: 0.9.0
+  tools, tools missing after an OBTO update, a connector with no tools, or
+  debugs an OBTO app via logs. Covers the error envelope, the
+  after-update check, and diagnosis paths.
+version: 0.9.1
 ---
 
 # OBTO Troubleshooting
@@ -18,13 +18,17 @@ OBTO tools return structured errors: `{ok:false, error:<code>, hint:<what to do>
 
 ## After an OBTO update
 
-When OBTO announces a release, or a tool you expect is missing, or a tool behaves the old way, call `obto_whoami` and read `sessionVersion`, `podVersion` and `sessionStale`:
+When OBTO announces a release, a tool is missing or behaves the old way, or the server seems wrong, call `obto_whoami` and read `sessionVersion`, `podVersion` and `sessionStale`:
 
 - `sessionStale: true` — this connection was opened before the server was updated. New tools are absent from your tool list, and existing tools may still run their old code while answering `ok`.
 - `sessionStale: false`, but a tool named in the release note is missing from your tool list — the client cached the old list.
 - `sessionStale: null` — the server could not tell; judge by the tool list.
 
 In each case tell the user in one line: reconnect the OBTO connector (Claude app: Settings > Connectors; Claude Code: `/mcp` > Reconnect; Codex: restart Codex), then start a **new** chat or thread, because an open chat keeps the tool list it started with. Do not retry the missing tool or imitate it with other tools; after the reconnect, `obto_whoami` in the new chat should show `sessionStale: false` and the new tools.
+
+## A connector with no tools
+
+When the user names a connector and it has no tools, stop and say exactly: "the <name> connector has no tools: check its URL with `codex mcp list` / `claude mcp list`; it must end in /ms/mcp". Never continue on another connector: each may be a different cluster. A hand-added entry with a plugin's name shadows the plugin's own entry; the fix is `codex mcp remove <name>`, then `codex mcp login <name>`.
 
 ## Common errors and what they actually mean
 
@@ -92,7 +96,7 @@ In each case tell the user in one line: reconnect the OBTO connector (Claude app
 2. `obto_get_app_logs` for a scan across all artifact categories.
 3. `obto_fetch_app_graph` / `pltf_appmap` for dependency structure.
 4. Reproduce via `obto_invoke_route` success-path calls.
-5. `obto_capture_preview` (where the operator has provisioned headless Chromium via `co.obto.preview.chromium_path`) — drives a server-side browser to a preview/app URL and returns a stored screenshot URL plus the HTTP `status`, browser `console` entries, uncaught `pageErrors`, and `failedRequests`. This is how you catch *client-side* and network failures that `pltf_log` (server-side only) never shows, and how you SEE a broken render. Attach the `screenshotUrl` to a vision-capable model to inspect the UI. SSRF-restricted to authorized preview origins; read-only.
+5. `obto_capture_preview` (where the operator has provisioned headless Chromium via `co.obto.preview.chromium_path`) — drives a server-side browser to a preview/app URL and returns a stored screenshot URL plus the HTTP `status`, browser `console` entries, uncaught `pageErrors`, and `failedRequests`. This is how you catch *client-side* and network failures that `pltf_log` (server-side only) never shows, and how you SEE a broken render. SSRF-restricted to authorized preview origins; read-only.
 
 ## The canonical host serves the wrong thing (shells, wrong app, HTML on an API)
 
@@ -108,15 +112,11 @@ A 200 that carries `<title>Site Missing!</title>`, "This domain was not found!!"
 Read the write receipt's `codePropagation` — it is a fact about the artifact type, not a guess:
 `read_per_request` (live now) · `syncs_live` (propagating; a probe may briefly hit an older copy) · `pending_platform_activation` (stored, activating asynchronously) · `requires_site_rebuild` (site-served host — the built bundle is what browsers get, so `obto_build_app` is the only propagation).
 
-For `pending_platform_activation`: try `obto_reload_scripts`; otherwise **verify instead of intervening** — call something only the new version can answer (a new method → old module throws `x is not a function`; a new response field) via `obto_invoke_route`. Propagation is eventual and often completes on its own. Two traps: a job that reports `done` may have run the OLD code, and one runtime can serve new code while another serves old for many minutes — sample repeatedly before trusting a post-write smoke. If activation never happens, that is a platform incident to report by error code — never something you resolve with infrastructure access (see `obto-platform-boundary`).
+For `pending_platform_activation`: try `obto_reload_scripts`; otherwise **verify instead of intervening** — call something only the new version can answer (a new method → old module throws `x is not a function`; a new response field) via `obto_invoke_route`. Two traps: a job that reports `done` may have run the OLD code, and one runtime can serve new code while another serves old for many minutes — sample repeatedly before trusting a post-write smoke. If activation never happens, that is a platform incident to report by error code — never something you resolve with infrastructure access (see `obto-platform-boundary`).
 
 ## A preview URL that "loads" is not proof
 
-If a page renders but the data is wrong/empty, or someone says "the preview works" — don't trust the URL. A preview only proves the infra responded, and a working preview or tenant-ingress call does NOT prove the canonical host works (a structurally-dead canonical API once survived every green test that way). Verify for real: `obto_validate_app` clean; every `/api` route exercised via `obto_invoke_route` returning the expected status, content type and JSON shape on the CANONICAL surface (an HTML 200, a non-200, or a 524/timeout is a failure, and a degraded-mode UI fallback is too); identity confirmed (is *my* app answering, not a shell or another app's build?); and `obto_capture_preview` to inspect the actual render plus its console/network. Best proof: one real user action performed and confirmed persisted. See `obto://guide/public-app-baseline`.
-
-## When the server seems wrong
-
-Confirm what's actually running before concluding anything: `obto_whoami` → `serverVersion` tells you which server build your session is talking to. Mismatched expectations are usually a stale client catalog (reconnect), not a server regression.
+If a page renders but the data is wrong/empty, or someone says "the preview works" — don't trust the URL. A preview only proves the infra responded, and a working preview or tenant-ingress call does NOT prove the canonical host works. Verify for real: `obto_validate_app` clean; every `/api` route exercised via `obto_invoke_route` returning the expected status, content type and JSON shape on the CANONICAL surface (an HTML 200, a non-200, or a 524/timeout is a failure, and a degraded-mode UI fallback is too); identity confirmed (is *my* app answering, not a shell or another app's build?); and `obto_capture_preview` to inspect the actual render plus its console/network. Best proof: one real user action performed and confirmed persisted. See `obto://guide/public-app-baseline`.
 
 ## Never diagnose past the platform boundary
 

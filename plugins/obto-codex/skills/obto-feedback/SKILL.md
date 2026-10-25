@@ -58,7 +58,7 @@ box, arrow, pen stroke or label → note → Save). Each item is a record in
   annotated screenshot. Then tell the user the item can be marked **fixed** from
   the DevZone Feedback drawer — the MCP tools are deliberately read-only, so
   status changes stay with the humans. In DevZone itself, "Fix it" stages a plan
-  turn first and "Approve & run" runs the mission that flips the item to fixed.
+  turn first; a run by the reviewer starts the mission that flips it to fixed.
 - **Closed / dismissed items** are hidden from the default list; ask before
   reopening them. Never delete feedback records.
 

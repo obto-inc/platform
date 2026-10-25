@@ -65,7 +65,7 @@ Same marketplace, same skills; `codex mcp login obto` completes the Google OAuth
 ### 4. Connect to Your AI Client
 Add your MCP server URL to your AI client's MCP configuration:
 
-**Claude Desktop** — Go to Settings → MCP Servers → Add your OBTO endpoint URL. Claude will redirect you to authenticate via OAuth. Approve it.
+**Claude Desktop** — Go to Settings → MCP Servers → Add your OBTO endpoint URL. Claude will redirect you to authenticate via OAuth. Allow it.
 
 **Claude Web** — In a project, add the MCP server URL. Authorize when prompted.
 

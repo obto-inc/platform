@@ -8,11 +8,11 @@ description: >
   change applied yet" — or mentions obto_pg_query, obto_pg_check,
   obto_pg_propose, obto_pg_status, schema drift, or Prisma migrations against
   an OBTO-managed database. Covers read-only queries, the reviewed
-  schema-change flow (check, propose, then the app's owner or OBTO approves
-  and applies), who may approve (whoMayApprove), the interim rules for tables
-  Prisma still reads, how to cut a change into units, what the tool refuses
+  schema-change flow (check, prepare, then apply after the owner's yes in
+  chat), who may change the database, the interim rules for tables Prisma
+  still reads, how to cut a change into units, what the tool refuses
   today, and what never to do.
-version: 0.2.0
+version: 0.3.0
 ---
 
 # OBTO App Database (Postgres)
@@ -23,19 +23,13 @@ Some OBTO apps own a Postgres database. The platform holds the connection; you r
 |---|---|---|
 | `obto_pg_query` | read data and the catalog (one read-only statement) | you |
 | `obto_pg_check` | lint a schema change against the live catalog; stores nothing | you |
-| `obto_pg_propose` | lint + rehearse on the real database inside `BEGIN … ROLLBACK`, then store the change | you |
+| `obto_pg_propose` | prepare: lint + rehearse on the real database inside `BEGIN … ROLLBACK`, then store the change | app owner, OBTO |
 | `obto_pg_status` / `obto_pg_list` | follow one change / list changes, newest first | you |
-| `obto_pg_retry` / `obto_pg_cancel` | re-lint and re-rehearse a blocked change / stop one that has not run | proposer, app owner, OBTO |
+| `obto_pg_retry` / `obto_pg_cancel` | re-lint and re-rehearse a blocked change / stop one that has not run | app owner, OBTO |
 | `obto_pg_drift` / `obto_pg_ledger` | compare the live schema with the ledger / read the change history | you |
-| `obto_pg_approve` / `obto_pg_apply` | approve and run a change on production | **app owner (when owner approval is on) or OBTO operator** |
-| `obto_pg_owner_approval` | read whether owner approval is on for the app (setting it is OBTO only) | you |
+| `obto_pg_apply` | run a prepared change on production, after the owner's yes in chat | **app owner, OBTO** |
 
-**Who approves: check `whoMayApprove` in `obto_pg_status`.**
-- `owner or operator` — owner approval is on for the app. The app's **owner** — a user whose home domain is the app's domain and who has the `super` role there — approves and applies the change, of any class, their own included. No second approver is needed. A user who reaches the domain through a cross-tenant switch is never its owner.
-- `operator` — only OBTO approves and applies; ask OBTO.
-- Always OBTO, whatever the switch says: a `baseline`, the owner-approval switch itself, and a change that carries `prismaRefreshImage` (OBTO builds and rolls that image).
-
-Anyone else gets `auth.ops_required`, and an owner gets `auth.owner_approval_off` while the switch is off. Both are expected answers, not bugs: the change waits for the owner or OBTO.
+**Only the app's owner and OBTO can change the app's database.** The owner is a user whose home domain is the app's domain and who has the `super` role there; a user who reaches the domain through a cross-tenant switch never is. The owner's AI checks a change, prepares it (`obto_pg_propose`) and applies it (`obto_pg_apply`) after the owner says yes in chat. Anyone else reads and checks only: every write answers `auth.owner_only` ("Only the app's owner can change this database. Ask them."). `auth.owner_changes_off` means OBTO has paused owner changes: ask OBTO. Always OBTO: a `baseline` and a change that carries `prismaRefreshImage` (OBTO builds and rolls that image). These are expected answers, not bugs.
 
 If these tools are missing from your tool list, the connection predates the release that added them — see "After an OBTO update" in `obto-troubleshooting`.
 
@@ -43,7 +37,7 @@ If these tools are missing from your tool list, the connection predates the rele
 
 - **Never ask for, read, or print the database URL, password, or connection string.** No tool returns one, and nothing in this workflow needs it. If the user offers one, decline and continue with the tools.
 - **Never change the database from outside OBTO** — no `psql`, no script or GUI with the URL, no DDL run from app code to get around a refusal.
-- **Never run `prisma db push`, `prisma migrate dev`, or any other `prisma migrate` command against production.** `db push` drops columns its schema does not list — with their data — including columns added through OBTO. `migrate dev` reports drift and offers to reset the database. Any schema change made outside the tool shows up in `obto_pg_drift` and **blocks every apply** until the drift is adopted (an `adopt_drift` change, approved by the app owner when owner approval is on, or by OBTO); a change to `_prisma_migrations` counts as drift too.
+- **Never run `prisma db push`, `prisma migrate dev`, or any other `prisma migrate` command against production.** `db push` drops columns its schema does not list — with their data — including columns added through OBTO. `migrate dev` reports drift and offers to reset the database. Any schema change made outside the tool shows up in `obto_pg_drift` and **blocks every apply** until the drift is adopted (an `adopt_drift` change, made by the owner or OBTO); a change to `_prisma_migrations` counts as drift too.
 
 ## Reading: `obto_pg_query`
 
@@ -64,15 +58,15 @@ SELECT column_name, data_type, is_nullable, column_default FROM information_sche
 ## Changing the schema
 
 1. **Read first.** The table's columns, its NOT NULL columns without a default, constraints, triggers, row count, and which code reads it. Call `obto_pg_drift`: if it is not `ok`, every apply is blocked — tell the user before writing anything.
-2. **Write the change as units** (next section). Give it a `title`, a one-paragraph `reason`, and `class: "expand"` for additive changes (`contract` = drops/renames, `rewrite` = type changes; an OBTO operator who approves those must not be their proposer, while the owner may approve their own).
+2. **Write the change as units** (next section). Give it a `title`, a one-paragraph `reason`, and `class: "expand"` for additive changes (`contract` = drops/renames, `rewrite` = type changes).
 3. **Iterate with `obto_pg_check`** until it has no `refuse` finding. It stores nothing and runs no rehearsal, so iterate here, not with propose. `sql` alone is checked as one tx unit and will report `unit.expect_required` — a real change needs `units` with `expect`.
-4. **`obto_pg_propose` once.** Read `result.state`:
-   - `rehearsed` — ready. Tell the user the `changeId`, the `sqlSha256`, and who approves it (`whoMayApprove`).
-   - `refused` — a refuse finding; it can never be approved. Fix the SQL and propose a new change.
+4. **Prepare it: `obto_pg_propose` once.** It stores the change and tries it on the real database; nothing is committed. Read `result.state`:
+   - `rehearsed` — ready to apply. Tell the owner in plain words what changes, the lint warnings, the `catalogDiff`, and any units the rehearsal could not try (`rehearsal.noRehearsal`).
+   - `refused` — a refuse finding; it never runs. Fix the SQL and propose a new change.
    - `rehearsal_failed` or `blocked_drift` — fix the cause, then `obto_pg_retry` the same change.
    - `waiting_rehearsal` — another rehearsal or apply holds the app, or the rehearsal cooldown is running; `obto_pg_retry` after `precheck.waiting.retryAfterMs`.
    - `service.still_running` (an error answer) — the call is still running on the server; follow it with `obto_pg_list` / `obto_pg_status` instead of proposing again.
-5. **The owner or OBTO approves, then applies.** An owner's agent calls `obto_pg_approve` and `obto_pg_apply` **only after the owner says yes to that `changeId` and `sqlSha256`**, having seen the lint warnings, the `catalogDiff`, and any units in `rehearsal.noRehearsal` (approving those needs `noRehearsalNote`, 10+ characters). Never approve a change because it passed lint. The approval binds to the `sqlSha256` and to the schema at that moment: if either moves in between, apply refuses (`apply.refused`) and the change must be rehearsed and approved again. An owner's approval also counts only while owner approval stays on and the approver keeps `super`; otherwise apply withdraws it (`approval.owner_approval_off` / `approval.owner_not_super`) and the change waits for a new approval. One `obto_pg_apply` call works for about 20 s: `state: partial` with `run.stoppedBy: budget` means call apply again (no new approval needed). A stop on an error needs a new approval.
+5. **Apply after the owner's yes.** The first `obto_pg_apply` answers `client_yes_needed` with ONE question and applies nothing. Ask exactly that question, stop, and call `obto_pg_apply` again only after the owner's yes (20 s to 30 min later; sooner or later asks again). A change that drops or deletes says what is lost: never pick yes for the owner. Never apply a change because it passed lint. If the change or the schema moved in between, apply refuses or asks again: check and prepare again. One call works for about 20 s: `state: partial` with `run.stoppedBy: budget` means call apply again.
 6. **Follow it to the end** with `obto_pg_status` (state, per-unit `run`, `ledgerSeq`). Done means: state `applied`, a `ledgerSeq`, each unit's `expect` true when you run it through `obto_pg_query`, and `obto_pg_drift` ok. `partial` or `failed` with an error carries `run.error` — report it to the user (the owner, or OBTO, decides the next step). Never tell the user a change is live before `obto_pg_status` says `applied`.
 
 A rehearsal really runs on production (rolled back, but holding the same locks while it runs), and each app allows one rehearsal at a time with a cooldown after it, so never loop `propose` / `retry`. The whole rehearsal must finish within 15 s: a change with many units can run over, so split it into two changes (schema first, backfills in a second change once the first is applied). `obto_pg_noop_change` builds a change that changes nothing — useful to prove the pipeline end to end.
@@ -80,7 +74,7 @@ A rehearsal really runs on production (rolled back, but holding the same locks w
 ## Units: what commits together
 
 - `tx` — one transaction; may hold several statements.
-- `nontx` — exactly one statement that cannot run in a transaction: `CREATE/DROP INDEX CONCURRENTLY`, `ALTER TYPE … ADD VALUE`. A `CONCURRENTLY` index cannot be rehearsed: it is listed in `rehearsal.noRehearsal`, and the approver must note that.
+- `nontx` — exactly one statement that cannot run in a transaction: `CREATE/DROP INDEX CONCURRENTLY`, `ALTER TYPE … ADD VALUE`. A `CONCURRENTLY` index cannot be rehearsed: it is listed in `rehearsal.noRehearsal`; tell the owner before the yes.
 - `backfill` — you give `{table, key, set, where, batchSize, pauseMs, maxBatches}`; the tool writes a batched, resumable `UPDATE`. It only updates.
 - Every `tx` and `nontx` unit needs `expect`: one read-only `SELECT` returning one boolean, true once the unit is applied — it is how a stopped change resumes. `expect` and a backfill's `set` / `where` may call only built-in read functions.
 
@@ -100,13 +94,13 @@ A column added through OBTO is unknown to the app's Prisma schema. The running P
 
 ## Saving data
 
-`obto_pg_query` is read-only. Rows normally reach the database through the app's own code or API. When a change needs data of its own (for example a first row that uses a new column), put the `INSERT … VALUES` in the **same tx unit** as the DDL; it passes with the warning `dml.insert_existing` and goes through rehearsal, approval, and the ledger like the DDL. Filling existing rows is a `backfill` unit.
+`obto_pg_query` is read-only. Rows normally reach the database through the app's own code or API. When a change needs data of its own (for example a first row that uses a new column), put the `INSERT … VALUES` in the **same tx unit** as the DDL; it passes with the warning `dml.insert_existing` and goes through lint, rehearsal and the ledger like the DDL. Filling existing rows is a `backfill` unit.
 
 ## What the tool refuses today
 
 Read `rule` in each finding; the ones clients hit most:
 
-- **`DROP COLUMN`** (any drop or rename) — `drop.requires_contract`. A drop needs class `contract`, a second approver, and the full SQL parser, which this server does not have yet; on Prisma tables the interim rule blocks it as well. Today the answer is: keep the column, or ask OBTO.
+- **`DROP COLUMN`** (any drop or rename) — `drop.requires_contract`. A drop needs class `contract` and the full SQL parser, which this server does not have yet; on Prisma tables the interim rule blocks it as well. Today the answer is: keep the column, or ask OBTO.
 - **`DELETE`** — `dml.unbatched`. The message says "use a backfill unit", but a backfill can only `UPDATE`, so there is no tool path to delete rows today. Delete through the app's own API, or ask OBTO.
 - Bulk `UPDATE` or `INSERT … SELECT` on an existing table — `dml.unbatched`; use a backfill unit.
 - Anything the lint cannot classify — `recognizer.needs_parser`; it never runs. Rewrite it as simpler statements or ask OBTO.
@@ -127,4 +121,4 @@ Read `rule` in each finding; the ones clients hit most:
 }
 ```
 
-Before proposing, check that the `INSERT` supplies every NOT NULL column without a default. Run it through `obto_pg_check`, then `obto_pg_propose`, and report the `changeId` and state to the user.
+Before proposing, check that the `INSERT` supplies every NOT NULL column without a default. Run it through `obto_pg_check`, then `obto_pg_propose`, and report the `changeId` and state to the owner.
