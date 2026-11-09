@@ -38,17 +38,13 @@ box, arrow, pen stroke or label → note → Save). Each item is a record in
    `obto_read_app_map`, `obto_fetch_app_graph` and `search` end with
    `[obto-feedback] N open reviewer feedback item(s)…`. Treat it as a prompt to
    call `obto_list_feedback` before changing anything.
-3. **The bridge.** Every new item is posted to the Agent Bridge thread
-   `feedback-<app>` (kind `question`, author = the reviewer). Agents that poll
-   `bridge_inbox_peek` see it; `bridge_thread_read({threadId:"feedback-<app>"})`
-   reads the backlog. Inside DevZone the platform also injects an open-feedback
-   digest into every agent turn.
+3. **DevZone.** Inside DevZone the platform injects an open-feedback digest
+   into every agent turn.
 
 ## The routine
 
 - **At the start of work on an app:** call `obto_list_feedback` once. If items
-  are open, say so in one line ("2 open reviewer items — want me to take
-  fb_… first?"); do not nag, do not repeat it every turn.
+  are open, mention them in plain words inside the plan; do not nag.
 - **When the user's request touches an item, or asks what reviewers want:**
   call `obto_get_feedback` FIRST, look at `annotatedUrl`, and locate the exact
   artifact/element the marks point at before editing (discover-before-fetch:

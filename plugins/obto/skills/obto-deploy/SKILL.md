@@ -18,18 +18,18 @@ Before deploying, decide which path fits — picking wrong is the most common de
 
 1. **Editing or deleting part of an existing artifact → `obto_patch_artifact`.** Line-addressed, surgical, and it NEVER reproduces the whole file. This sidesteps byte-exactness entirely, so it is the right tool for almost all changes to existing code — including large files (a 305KB platform module change is still just a few changed lines). On a large file, use `obto_grep_artifact` to find the exact lines without pulling the whole file (it returns `N| text` blocks); for a small file `fetch(id)` is fine. Then patch with an `anchorText` guard. A deletion is just `newContent: ""`. The chunked / base64 / from_url paths below are ONLY for bytes entering the platform fresh — never reach for them to make an edit.
 2. **A new artifact small enough for one call → `obto_upsert_record({script})`** directly.
-3. **A new artifact too large for one call, that you can reproduce as text → the chunked path** (below). Reliable up to ~9KB per emitted chunk — see the emission ceiling.
+3. **A new artifact too large for one call, that you can reproduce as text → the chunked path** (below).
 4. **A new artifact too large to reproduce as chunks at all (≈300KB+), or already reachable at an https URL → `obto_stage_chunk({action:'from_url'})`** (deploy-by-reference, below). The server fetches the bytes; the agent never emits them.
 
 Reproducing a whole large file just to change a few lines is the trap. If the change is an edit, patch it.
 
-**`pltf_script_server` is transpiled — patch the right layer.** Server scripts are authored as ESM/TypeScript and the engine compiles on save: the record's `script` holds the COMPILED output, `ts_source` holds the original source (standard platform design — see the build-loop skill's artifact rules). grep/patch address `script`, which is workable for small tweaks, but: (1) every save recompiles and renumbers the whole file — re-grep before the next patch and never reuse pre-save line numbers (insert mode has no anchor check and lands blind); (2) a line patch lands in the compiled text, so the change is invisible to anyone working from the source. For module-scale changes, edit the SOURCE (local mirror, or read `ts_source` via `obto_db_query`) and re-deploy the full file via `from_url` + `expectedSha256` — the save recompiles and re-syncs both fields. (Some records/stores still hold plain source in `script` — there, line patches ARE source edits; check what you fetched before assuming.) Note the full-file path runs the export-shape gate: before server 3.5.26 the bare-export scan false-fires if the source merely mentions `module.exports = X` inside a string (3.5.26 line-anchors it).
+**Server scripts compiled from TypeScript** (`script` starts with `/*__obto_ts_compiled__*/`, `ts_source` present): grep and patch with `field:'ts_source'`; the save recompiles `script`. Re-grep after every save: line numbers change.
 
 ## Deployment order
 
 1. Backend first (`pltf_script_server`), then routes, then browser-facing artifacts (pages, JS, CSS).
 2. Every write carries explicit `appName` + `domain` (stateless contract).
-3. Verify after write: fetch the artifact back and compare before moving on. For code-bearing artifacts, also run `obto_validate_script` **by reference** (omit `script`, name the stored artifact) so the validation covers what actually landed. (Known benign false-fire: an ESM-bearing `pltf_script_server` module fails by-reference at line 1.) Then run `obto_review_change` with `targets` = the records you wrote, and fix every error finding before moving on (`obto-build-loop` step 5).
+3. Verify after write: fetch the artifact back and compare before moving on. For code-bearing artifacts, also run `obto_validate_script` **by reference** (omit `script`, name the stored artifact) so the validation covers what actually landed. Then run `obto_review_change` with `targets` = the records you wrote, and fix every error finding before moving on (`obto-build-loop` step 5).
 4. Exercise one success-path call per new/changed route or tool before calling the deploy done.
 
 ## Large artifacts — the chunked path
@@ -50,7 +50,7 @@ A `utf8` chunk is the literal text the client emits, and an agent/LLM harness **
 
 ### The emission ceiling (why from_url exists)
 
-Emitting chunks gets unreliable at scale: an agent harness silently drops characters on large chunks (observed — 241 chars lost on a 32KB chunk, 8 lost on an 8KB chunk; the sha256 gate caught both, so nothing corrupt shipped, but every commit attempt failed the gate). **Keep emitted chunks around 9KB** — an 18KB source goes cleanly as 2×9KB. Above roughly that ceiling, base64 does NOT rescue you: the failure is in emission, not encoding. Switch to from_url.
+The server takes chunks up to 48KB, but an agent silently drops characters on large ones. **Send small chunks, each with `chunkSha256`** (shell-computed): a damaged chunk is refused and `seq` does not advance, so re-send it. If chunks keep failing, base64 will not help (the failure is emission, not encoding): switch to from_url.
 
 ### Deploy-by-reference: from_url
 
@@ -62,18 +62,11 @@ For a brand-new artifact too large to reproduce as chunks at all (e.g. a 300KB+ 
 
 Because the bytes never pass through the agent, there is no emission ceiling — this is the path for the largest sources. It is still a *new-bytes* path: for an edit to something already in OBTO, patch in place instead.
 
-## After a deploy that changes tool schemas
-
-If a deploy adds, removes, or reshapes MCP tools, the server rebuilds open sessions and sends `tools/list_changed` (no more `-32005`). A client that cached its tool list still shows old schemas or mis-typed parameters: **reconnect the connector** and start a new chat rather than retrying calls.
-
 ## Failure modes
 
-- `tool_timeout` → the call hit the server's 30-second wall-clock ceiling (a structured refusal, by design — it exists so you never see an opaque client-side `-32001`). Retry once; if it recurs, shrink the operation (smaller chunks, narrower query, fewer records) instead of hammering the same call.
-- Oversized inline payload rejected → single-call `script` payloads are size-capped (~5MB); anything near that belongs on the chunked path anyway.
-- Top-level `return X;` rejected in `pltf_script_client` / `pltf_policy_client` → the server predates 3.5.19 (which fixed the gate to accept the contract-required return-wrapped form). Check `obto_whoami.serverVersion` before fighting the validator.
+Other codes (`tool_timeout`, `host_mismatch`, `name_collision`): see `obto-troubleshooting`.
+
 - `sha256_mismatch` on commit → the assembled buffer differs from your source; re-stage from scratch.
-- `host_mismatch` → you passed a host contradicting the app's canonical host; omit `host` and retry.
-- `name_collision` → you passed an `_id` but a DIFFERENT record already exists at that (name, app, domain). The `existingId` in the error is the loader-canonical record — commit without `_id` (updates the canonical one) rather than forcing yours. Duplicate records for one artifact mean the platform may be serving stale code; flag them to a human for cleanup.
 - Out-of-order `seq` → append is strictly ordered; `seq` must equal the count of chunks already appended.
 - Buffer expired (1h) → begin again.
 - `invalid_base64` / `invalid_encoding` → you began with `transferEncoding:'base64'` but sent a chunk that isn't valid base64 (or began utf8 and sent base64). Re-run `base64 <file>` in the shell and send that output verbatim — never hand-assemble base64.

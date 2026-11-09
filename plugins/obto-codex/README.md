@@ -14,7 +14,7 @@ Build, deploy, verify, and troubleshoot applications on the
 - Done-means-done verification: validate, exercise every route, and visual-debug with `obto_capture_preview` (a preview URL is not proof)
 - Durable OBTO memory guidance
 - Per-tenant MCP extension: publish custom tools, resources, and prompts through the triad CRUD (`obto_create_mcp_tool` …)
-- The app's own Postgres database: read-only queries (`obto_pg_query`) and reviewed schema changes (`obto_pg_check` → `obto_pg_propose` → `obto_pg_apply` after the owner's yes), with the interim rules for tables Prisma still reads
+- The app's own Postgres database: read-only queries (`obto_pg_query`) and reviewed schema changes (`obto_pg_check` → `obto_pg_propose` → `obto_pg_apply` after the owner's yes), with the interim rules for tables Prisma still reads (new columns are read with SQL, not added to Prisma models)
 - Error-envelope, routing, database, host, timeout, and stale-catalog troubleshooting
 - The platform boundary: every workflow stays inside MCP — never `kubectl`, pod recycles, shells, or a DNS console
 
@@ -40,6 +40,7 @@ Build, deploy, verify, and troubleshoot applications on the
 Troubleshooting:
 
 - **Connected but no tools?** Check the URL with `codex mcp list` / `claude mcp list`: it must be `https://app.obto.co/ms/mcp`. A hand-added entry named `obto` shadows the plugin's; run `codex mcp remove obto`, then `codex mcp login obto`.
+- **Sign-in errors:** 401 → accept the OAuth prompt in the browser. 400 "PKCE is mandatory" → update the client (current Claude and Codex send S256 PKCE). "Failed to check authorization requirements" → the sign-in page hiding an upstream 400; retry from the client, not by reloading. `invalid_redirect_uri` on registration → that `client_name` has another callback; use a distinct `client_name`.
 
 To pick up a later release, run `codex plugin marketplace upgrade` — a marketplace snapshot never refreshes itself. The installed plugin tracks the snapshot, so no separate plugin-update step is needed.
 

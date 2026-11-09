@@ -21,7 +21,7 @@ Call `obto_recall` **before** making decisions or starting work on anything you 
 
 **App-scoped** (default for interactive/frontier-model agents): pass `appName` + `domain`. Memory is long-lived, scoped to (user, app, domain). Use for durable knowledge ABOUT an app: architecture, conventions, gotchas, preferences.
 
-**Conversation-scoped** (for API-built small-model agents): pass `conversationId` (a UUID you generate, stable for the conversation). Memory becomes the conversation's external working memory — write active app/domain and recent decisions at the start of each turn, read them back to drive tool calls. This is the platform's answer to maintaining context under the stateless contract (see `obto://guide/quickstart` Rule 0.5).
+**Conversation-scoped** (for API-built small-model agents): pass `conversationId` (a UUID you generate, stable for the conversation). Memory becomes the conversation's external working memory — write active app/domain and recent decisions at the start of each turn, read them back to drive tool calls.
 
 ## Write discipline
 

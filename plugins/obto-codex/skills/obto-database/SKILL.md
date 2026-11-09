@@ -17,7 +17,7 @@ version: 0.3.0
 
 # OBTO App Database (Postgres)
 
-Some OBTO apps own a Postgres database. The platform holds the connection; you reach the database only through the `obto_pg_*` tools, and every call carries `appName` (the app that owns the database) and your `domain` (from `obto_whoami`). `config.unknown_app` means the app has no database registered on OBTO — ask the OBTO operator; do not look for another way in.
+Some OBTO apps own a Postgres database. The platform holds the connection; you reach the database only through the `obto_pg_*` tools, and every call carries `appName` (the app that owns the database) and your `domain` (from `obto_whoami`). `config.unknown_app` means the app has no database registered on OBTO — file it with `sdlc_create_item` ("ask OBTO" below means the same); do not look for another way in.
 
 | Tool | Use it to | Who |
 |---|---|---|
@@ -82,7 +82,7 @@ A rehearsal really runs on production (rolled back, but holding the same locks w
 
 ## Interim rules: tables Prisma still reads
 
-While app code still reads a table through Prisma, only **additive** changes are allowed on it:
+While old app code still reads a table through Prisma, only **additive** changes are allowed on it:
 
 - a new table;
 - a new column that is nullable or has a constant default — `ADD COLUMN … NOT NULL` without a default is refused (`interim.not_null_no_default`, it breaks every Prisma create);
@@ -90,7 +90,7 @@ While app code still reads a table through Prisma, only **additive** changes are
 
 Refused on those tables (`interim.prisma_table`): constraints, triggers, default changes, NOT NULL changes, type changes, renames, drops. A value added to an enum Prisma reads needs `prismaRefreshImage` (`interim.enum_needs_prisma_refresh`) — leave that one to OBTO. A new foreign key pointing at a Prisma table is allowed with a warning (`interim.fk_to_prisma_table`): Prisma deletes of a referenced row will then fail.
 
-A column added through OBTO is unknown to the app's Prisma schema. The running Prisma client ignores it, so nothing breaks, but the app cannot read or write it through Prisma. Tell the user to add the field to the Prisma model (optional, e.g. `String?`) the next time the code changes — and that the database side is already done, so no migration is run for it.
+A column added through OBTO is invisible to the app's Prisma client, which keeps working. New code reads and writes it with SQL: do not add it to a Prisma model or ask for a Prisma rebuild. The database side is done; no migration runs for it.
 
 ## Saving data
 

@@ -29,21 +29,21 @@ This is activation, and activation is the platform's job. Write receipts tell yo
 - `read_per_request` — live immediately, nothing to do.
 - `syncs_live` — propagating across serving runtimes now; a probe may briefly hit an older copy.
 - `pending_platform_activation` — durably stored, activating asynchronously.
-- `requires_site_rebuild` — a site-served host serves the built bundle, so the record change is not live until `obto_build_app` rebuilds it. This one has an MCP action and it is a rebuild, not a restart.
+- `requires_site_rebuild` — a site-served host serves the built bundle, so the record change is not live until `obto_build_app` rebuilds it — after the client's yes to go live. A rebuild, not a restart.
 
-For `pending_platform_activation`: try `obto_reload_scripts` (it activates stored boot-loaded code where the serving runtime supports it, and refuses honestly where it does not). Otherwise **verify rather than intervene** — call something only the new code can answer (a new method, a new response field) with `obto_invoke_route`. Propagation is eventual and sometimes completes in minutes with no intervention at all. If it genuinely never activates, that is a platform incident: report the tool's error code to the operator. It is not a task you complete with infrastructure access.
+For `pending_platform_activation`: try `obto_reload_scripts` (it activates stored boot-loaded code where the serving runtime supports it, and refuses honestly where it does not). Otherwise **verify rather than intervene** — call something only the new code can answer (a new method, a new response field) with `obto_invoke_route`. Propagation is eventual and sometimes completes in minutes with no intervention at all. If it genuinely never activates, file it with `sdlc_create_item` (error code inside) and tell the client in plain words. Never use infrastructure access.
 
 **"The canonical URL serves the wrong page / 'Site Missing' / an API returns HTML."**
-Run `obto_repair_publish({appName, domain, mode:'dry_run'})`. It walks the whole serving chain — app host binding, site registration and flags, DNS, root-document identity, bundle asset, API-as-JSON on both the canonical host and the tenant ingress — and reports structured `{check, before, action}` evidence. Then `mode:'repair'` applies the safe fixes and reports before/after. If it returns a caveat or incident code it cannot fix from data, that is the honest end of the tenant path: relay the code to the operator. Do not go hunting for the ingress yourself.
+Run `obto_repair_publish({appName, domain, mode:'dry_run'})`. It walks the whole serving chain — app host binding, site registration and flags, DNS, root-document identity, bundle asset, API-as-JSON on both the canonical host and the tenant ingress — and reports structured `{check, before, action}` evidence. Then `mode:'repair'` applies the safe fixes and reports before/after. If it returns a caveat or incident code it cannot fix from data, that is the honest end of the tenant path: file it with `sdlc_create_item`. If root serves your app but a bundle asset 404s, rebuild with `obto_build_app` (after the client's yes).
 
 **"A route 404s right after I created it."**
-Registration is not instant (expect ~1–2 minutes on multi-runtime clusters, and cross-runtime updates can take 20–60s or longer). Wait and re-invoke. A 404 in that window is lag, not a failed write — and never a reason to restart anything. Beware the inverse trap: an immediate post-update smoke can hit a runtime still serving the OLD handler and report success. Verify more than once before trusting it.
+A new path can 404 until every runtime registers it. Re-invoke once; still 404 → `obto_reload_routes`, then re-invoke. Never restart anything. Beware the inverse trap: an immediate post-update smoke can hit a runtime still serving the OLD handler and report success. Verify more than once before trusting it.
 
 **"DNS / the certificate / the host record looks wrong."**
-The publish path owns DNS: `obto_build_app` ensures the record and fails loudly when it cannot, and `obto_repair_publish` re-ensures it idempotently. Never open a DNS console for an OBTO host.
+The publish path owns DNS: `obto_build_app` (going live, so only after the client's yes) ensures the record and fails loudly when it cannot, and `obto_repair_publish` re-ensures it idempotently. Never open a DNS console for an OBTO host.
 
 **"A tool refuses with a capability or activation error."**
-Believe it and stop. Those refusals are deliberate: they exist so a caller is never told to do something outside MCP. Report the code, pick the MCP alternative the envelope names, or tell the human what the operator needs to do — in platform terms ("the serving runtime does not yet carry this capability"), never in infrastructure instructions.
+Believe it and stop. Those refusals are deliberate: they exist so a caller is never told to do something outside MCP. Pick the MCP alternative the envelope names, or file it with `sdlc_create_item` and tell the client in plain words — never in infrastructure instructions.
 
 ## Verification is semantic, not a status code
 
@@ -59,7 +59,7 @@ The reason boundary violations get invented is usually a bad verification result
 
 ## How to report a platform defect
 
-When the MCP path is exhausted and something is genuinely wrong beneath it, that is a product finding — write it as one:
+When the MCP path is exhausted and something is genuinely wrong beneath it, file it with `sdlc_create_item`:
 
 1. What you called and what came back (tool, params, structured error code or caveat).
 2. What you expected, and the specific semantic check that failed.

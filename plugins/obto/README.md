@@ -6,7 +6,7 @@ Build, deploy, and operate apps on the [OBTO platform](https://app.obto.co) from
 
 **MCP server connection** — connects Claude to the OBTO platform (`obto` → `https://app.obto.co/ms/mcp`) with the full tool surface: app scaffolding, artifact deploys, line-level patching + slice reads, routes, DB introspection, logs, memory, search/fetch, media uploads, visual-debug screenshots, per-tenant MCP tool/resource/prompt publishing, and payment links. Sign-in is Google OAuth; a first-time sign-in provisions your workspace automatically.
 
-**`/obto:start` command** — begins a session by running `obto_whoami`, resolving the working domain, stating the working context, and loading the matching skill.
+**`/obto:start` command** — begins a session by running `obto_whoami` and following its start rules, reading the app's decision page if it has one, and loading the matching skill.
 
 **Skills**
 
@@ -17,7 +17,7 @@ Build, deploy, and operate apps on the [OBTO platform](https://app.obto.co) from
 | `obto-upload` | Getting a local media/binary file into the file store and back as a served URL: signed-URL direct upload (`obto_request_upload_url`, primary), chunked integrity-gated staging (fallback), server-side URL fetch, and the domain/body rules |
 | `obto-memory` | Using `obto_remember`/`obto_recall` (Hindsight) effectively — scoping modes, keys, recall-before-work |
 | `obto-mcp-extend` | Publishing per-tenant MCP tools, resources, and prompts through the triad CRUD (`obto_create_mcp_tool` …) — handler and schema rules, required annotations, Zod v4 traps, and catalog-freshness discipline |
-| `obto-database` | The app's own Postgres database: read-only `obto_pg_query`, the reviewed schema-change flow (`obto_pg_check` → `obto_pg_propose` → `obto_pg_apply` after the owner's yes), the interim rules for tables Prisma still reads, one unit vs several, what the tool refuses today, and never touching the database URL or running Prisma migrations against production |
+| `obto-database` | The app's own Postgres database: read-only `obto_pg_query`, the reviewed schema-change flow (`obto_pg_check` → `obto_pg_propose` → `obto_pg_apply` after the owner's yes), the interim rules for tables Prisma still reads (new columns are read with SQL, not added to Prisma models), one unit vs several, what the tool refuses today, and never touching the database URL or running Prisma migrations against production |
 | `obto-troubleshooting` | Structured error envelopes, the common error codes, log-based and visual (`obto_capture_preview`) debugging, and why a preview URL isn't proof |
 | `obto-platform-boundary` | Why every OBTO workflow stays inside MCP — the symptom-to-MCP-action map instead of `kubectl`, pod recycles, shells, or a DNS console, and how to report what MCP genuinely cannot fix |
 | `obto-feedback` | Reviewer feedback left on the DevZone preview — how it reaches an agent (`obto_list_feedback` / `obto_get_feedback`, the `[obto-feedback]` nudge on map/graph/search results, the Agent Bridge thread `feedback-<app>`), how to read the annotated screenshot, and how a fix is closed out |
@@ -48,3 +48,4 @@ Just describe what you want: "build a todo app on OBTO", "deploy this module to 
 - The server is stateless (3.3.0+ contract): every call carries `appName` + `domain` explicitly. The skills handle this.
 - After a platform release, if tools are missing or look stale (`obto_whoami` shows `sessionStale: true`), reconnect the OBTO connector (Claude app: Settings > Connectors; Claude Code: `/mcp` > Reconnect) and start a new chat — an open chat keeps the tool list it started with.
 - **Connected but no tools?** Check the URL with `codex mcp list` / `claude mcp list`: it must be `https://app.obto.co/ms/mcp`. A hand-added entry named `obto` shadows the plugin's; run `codex mcp remove obto`, then `codex mcp login obto`.
+- **Sign-in errors:** 401 → accept the OAuth prompt in the browser. 400 "PKCE is mandatory" → update the client (current Claude and Codex send S256 PKCE). "Failed to check authorization requirements" → the sign-in page hiding an upstream 400; retry from the client, not by reloading. `invalid_redirect_uri` on registration → that `client_name` has another callback; use a distinct `client_name`.
