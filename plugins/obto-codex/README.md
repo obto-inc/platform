@@ -9,12 +9,12 @@ Build, deploy, verify, and troubleshoot applications on the
 - Reliable public and native application build workflow
 - Ordered deployment with the right write path: patch-in-place for edits, chunked upload and `from_url` deploy-by-reference for large new artifacts
 - Line-level editing with grep-to-patch reads
-- Media/binary upload into the file store: signed-URL direct upload (`obto_request_upload_url`, primary), chunked integrity-gated staging (fallback), and server-side URL fetch — returning a served viewer URL
+- Media/binary upload into the file store: server-side URL fetch, the app's own upload page, and chunked integrity-gated staging (fallback) — returning a served viewer URL
 - Review loop after every save: `obto_review_change` until no error findings, tests (or "tests not run"), and the done gate (`gateOk: true`)
 - Done-means-done verification: validate, exercise every route, and visual-debug with `obto_capture_preview` (a preview URL is not proof)
 - Durable OBTO memory guidance
 - Per-tenant MCP extension: publish custom tools, resources, and prompts through the triad CRUD (`obto_create_mcp_tool` …)
-- The app's own Postgres database: read-only queries (`obto_pg_query`) and reviewed schema changes (`obto_pg_check` → `obto_pg_propose` → `obto_pg_apply` after the owner's yes), with the interim rules for tables Prisma still reads (new columns are read with SQL, not added to Prisma models)
+- The app's own Postgres database: read-only queries (`obto_pg_query`) and reviewed schema changes (`obto_pg_check` → `obto_pg_propose` → `obto_pg_apply` after the owner's yes)
 - Error-envelope, routing, database, host, timeout, and stale-catalog troubleshooting
 - The platform boundary: every workflow stays inside MCP — never `kubectl`, pod recycles, shells, or a DNS console
 

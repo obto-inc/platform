@@ -6,12 +6,10 @@ description: >
   does this table have", "add a column/table/index", "change the schema",
   "save a row with the new field", "why was my schema change refused", "is my
   change applied yet" — or mentions obto_pg_query, obto_pg_check,
-  obto_pg_propose, obto_pg_status, schema drift, or Prisma migrations against
-  an OBTO-managed database. Covers read-only queries, the reviewed
-  schema-change flow (check, prepare, then apply after the owner's yes in
-  chat), who may change the database, the interim rules for tables Prisma
-  still reads, how to cut a change into units, what the tool refuses
-  today, and what never to do.
+  obto_pg_propose, obto_pg_status, or schema drift. Covers read-only
+  queries, the reviewed schema-change flow (check, prepare, then apply after
+  the owner's yes in chat), who may change the database, how to cut a change
+  into units, what the tool refuses today, and what never to do.
 version: 0.3.0
 ---
 
@@ -29,15 +27,14 @@ Some OBTO apps own a Postgres database. The platform holds the connection; you r
 | `obto_pg_drift` / `obto_pg_ledger` | compare the live schema with the ledger / read the change history | you |
 | `obto_pg_apply` | run a prepared change on production, after the owner's yes in chat | **app owner, OBTO** |
 
-**Only the app's owner and OBTO can change the app's database.** The owner is a user whose home domain is the app's domain and who has the `super` role there; a user who reaches the domain through a cross-tenant switch never is. The owner's AI checks a change, prepares it (`obto_pg_propose`) and applies it (`obto_pg_apply`) after the owner says yes in chat. Anyone else reads and checks only: every write answers `auth.owner_only` ("Only the app's owner can change this database. Ask them."). `auth.owner_changes_off` means OBTO has paused owner changes: ask OBTO. Always OBTO: a `baseline` and a change that carries `prismaRefreshImage` (OBTO builds and rolls that image). These are expected answers, not bugs.
+**Only the app's owner and OBTO can change the app's database.** The owner is a user whose home domain is the app's domain and who has the `super` role there; a user who reaches the domain through a cross-tenant switch never is. The owner's AI checks a change, prepares it (`obto_pg_propose`) and applies it (`obto_pg_apply`) after the owner says yes in chat. Anyone else reads and checks only: every write answers `auth.owner_only` ("Only the app's owner can change this database. Ask them."). `auth.owner_changes_off` means OBTO has paused owner changes: ask OBTO. A `baseline` is always OBTO. These are expected answers, not bugs.
 
 If these tools are missing from your tool list, the connection predates the release that added them — see "After an OBTO update" in `obto-troubleshooting`.
 
 ## Never
 
 - **Never ask for, read, or print the database URL, password, or connection string.** No tool returns one, and nothing in this workflow needs it. If the user offers one, decline and continue with the tools.
-- **Never change the database from outside OBTO** — no `psql`, no script or GUI with the URL, no DDL run from app code to get around a refusal.
-- **Never run `prisma db push`, `prisma migrate dev`, or any other `prisma migrate` command against production.** `db push` drops columns its schema does not list — with their data — including columns added through OBTO. `migrate dev` reports drift and offers to reset the database. Any schema change made outside the tool shows up in `obto_pg_drift` and **blocks every apply** until the drift is adopted (an `adopt_drift` change, made by the owner or OBTO); a change to `_prisma_migrations` counts as drift too.
+- **Never change the schema from outside OBTO**: no migration tool, ORM schema push, `psql`, script or GUI with the URL, and no DDL run from app code to get around a refusal. Any such change shows up in `obto_pg_drift` and **blocks every apply** until the drift is adopted (an `adopt_drift` change, made by the owner or OBTO).
 
 ## Reading: `obto_pg_query`
 
@@ -80,18 +77,6 @@ A rehearsal really runs on production (rolled back, but holding the same locks w
 
 **The rehearsal runs all units in one transaction that is rolled back, but apply commits each unit separately.** If unit 2 fails, unit 1 stays applied. So whatever must exist together goes in **one** tx unit — a new column, its comment, and the row that uses it. Split into several units only where a stop in between leaves the database in a state the app can live with. Two more splits are forced by lint: a `CONCURRENTLY` index always gets its own nontx unit, and one tx unit may take write-blocking locks on only one existing table (`tx.one_hot_table`).
 
-## Interim rules: tables Prisma still reads
-
-While old app code still reads a table through Prisma, only **additive** changes are allowed on it:
-
-- a new table;
-- a new column that is nullable or has a constant default — `ADD COLUMN … NOT NULL` without a default is refused (`interim.not_null_no_default`, it breaks every Prisma create);
-- a non-unique `CREATE INDEX CONCURRENTLY`, in its own nontx unit (a plain `CREATE INDEX` on an existing table is refused with `index.concurrently_required`).
-
-Refused on those tables (`interim.prisma_table`): constraints, triggers, default changes, NOT NULL changes, type changes, renames, drops. A value added to an enum Prisma reads needs `prismaRefreshImage` (`interim.enum_needs_prisma_refresh`) — leave that one to OBTO. A new foreign key pointing at a Prisma table is allowed with a warning (`interim.fk_to_prisma_table`): Prisma deletes of a referenced row will then fail.
-
-A column added through OBTO is invisible to the app's Prisma client, which keeps working. New code reads and writes it with SQL: do not add it to a Prisma model or ask for a Prisma rebuild. The database side is done; no migration runs for it.
-
 ## Saving data
 
 `obto_pg_query` is read-only. Rows normally reach the database through the app's own code or API. When a change needs data of its own (for example a first row that uses a new column), put the `INSERT … VALUES` in the **same tx unit** as the DDL; it passes with the warning `dml.insert_existing` and goes through lint, rehearsal and the ledger like the DDL. Filling existing rows is a `backfill` unit.
@@ -100,10 +85,11 @@ A column added through OBTO is invisible to the app's Prisma client, which keeps
 
 Read `rule` in each finding; the ones clients hit most:
 
-- **`DROP COLUMN`** (any drop or rename) — `drop.requires_contract`. A drop needs class `contract` and the full SQL parser, which this server does not have yet; on Prisma tables the interim rule blocks it as well. Today the answer is: keep the column, or ask OBTO.
+- **`DROP COLUMN`** (any drop or rename) — `drop.requires_contract`. A drop needs class `contract` and the full SQL parser, which this server does not have yet. Today the answer is: keep the column, or ask OBTO.
 - **`DELETE`** — `dml.unbatched`. The message says "use a backfill unit", but a backfill can only `UPDATE`, so there is no tool path to delete rows today. Delete through the app's own API, or ask OBTO.
 - Bulk `UPDATE` or `INSERT … SELECT` on an existing table — `dml.unbatched`; use a backfill unit.
 - Anything the lint cannot classify — `recognizer.needs_parser`; it never runs. Rewrite it as simpler statements or ask OBTO.
+- **Some tables of a live app accept only additive changes for now**: a new table, a nullable or defaulted column, a non-unique `CREATE INDEX CONCURRENTLY` in its own nontx unit. Anything else on them gets an `interim.*` rule: leave it to OBTO.
 - `DO`, `COPY`, `TRUNCATE`, `CASCADE`, roles, grants, `SET`, `BEGIN`/`COMMIT`, dynamic SQL in functions — always refused.
 
 ## Worked example: a new column plus one row that uses it
