@@ -1,0 +1,17 @@
+{
+  "name": "obto",
+  "owner": {
+    "name": "OBTO Inc.",
+    "email": "support@obto.co"
+  },
+  "metadata": {
+    "description": "OBTO plugins: build, deploy and verify full-stack apps through OBTO's remote MCP server."
+  },
+  "plugins": [
+    {
+      "name": "obto",
+      "source": "plugins/obto-grok",
+      "description": "Build, deploy and verify full-stack apps on OBTO from Grok Bot or Cursor. One remote MCP server with OAuth sign-in, plus seven skills for the build loop, deployment order, media upload, durable memory, reviewer feedback, troubleshooting and the platform boundary."
+    }
+  ]
+}

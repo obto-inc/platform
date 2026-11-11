@@ -1,0 +1,22 @@
+{
+  "name": "obto",
+  "version": "0.14.5",
+  "description": "Build, deploy and verify full-stack apps on OBTO from Grok Bot or Cursor. One remote MCP server with OAuth sign-in, plus seven skills for the build loop, deployment order, media upload, durable memory, reviewer feedback, troubleshooting and the platform boundary.",
+  "author": {
+    "name": "OBTO Inc.",
+    "email": "support@obto.co"
+  },
+  "homepage": "https://www.obto.co/site/ob/getting-started",
+  "repository": "https://github.com/obto-inc/platform",
+  "license": "Apache-2.0",
+  "keywords": [
+    "obto",
+    "mcp",
+    "application-platform",
+    "deployment",
+    "full-stack"
+  ],
+  "logo": "assets/obto-logo.png",
+  "skills": "./skills/",
+  "mcpServers": "./mcp.json"
+}
