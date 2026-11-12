@@ -62,7 +62,7 @@ Work in this order; do not skip steps:
 When a repo is brought in (e.g. via the `githubintegration` sync), a standard Express backend lands as `pltf_script_server` records — controllers, routers, validation, services, middleware — but **OBTO never mounts an Express `Router`.** The `*_routes` files exist as scripts, so their endpoints are unreachable until translated. Translate each route file's endpoints into `pltf_route` records, **one per endpoint**:
 
 - `router.METHOD('/x', authMw, validation, controller.handler)` → a `pltf_route` (`router:'api'`, `path` = the router's mount base + `/x`, e.g. `v1/vendor-bills/:id` → live at `/api/v1/vendor-bills/:id`) whose body: runs the middleware chain inline (promisify each `(req,res,next)` middleware; run express-validator chains with `for (const rule of chain) await rule.run(req)` then `validationResult(req)`), then the controller body. Shape: `module.exports.<routeName> = () => async (req,res) => { … }`.
-- Follow the code rules above: keep npm `import`s as-is (check them with `obto_env_packages`), rewrite internal imports to `xe.<record>`.
+- Imports follow the artifact rules above: package imports stay, other OBTO records become `xe.<record>`.
 - Register specific paths (`/lines`, `/by-bill-id/:x`) before bare `:param` routes so they aren't shadowed.
 - The **service layer** (`xe.services_*`) assumes the repo's schema. If the app has its own Postgres (`obto_pg_query` answers), keep it on that database through `ob.pg`; the live schema, not the repo's ORM models, is the reference (`obto-database`). Otherwise a port to `ob.db` is a separate migration: scope it with the human.
 
